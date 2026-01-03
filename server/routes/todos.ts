@@ -2,6 +2,8 @@ import { FastifyInstance } from 'fastify';
 import { todoQueries } from '../db/queries.js';
 import { authenticate } from '../middleware/auth.js';
 import { SyncRequest, SyncResponse } from '../types.js';
+import { broadcastToUser } from '../websocket.js';
+import { randomUUID } from 'crypto';
 
 export async function todoRoutes(fastify: FastifyInstance) {
   // Get all todos
@@ -24,6 +26,17 @@ export async function todoRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: SyncRequest }>('/todos/sync', { preHandler: authenticate }, async (request, reply) => {
     const userId = request.user.userId;
     const { todos: clientTodos } = request.body;
+    const correlationId = randomUUID();
+    const syncMethod = 'http'; // HTTP sync endpoint
+
+    fastify.log.info({
+      userId,
+      syncMethod,
+      operationType: 'sync',
+      clientTodosCount: clientTodos.length,
+      correlationId,
+      timestamp: new Date().toISOString(),
+    }, '[HTTP_SYNC] Sync request received');
 
     console.log('Sync request - userId:', userId, 'clientTodos:', clientTodos.length);
 
@@ -47,6 +60,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
 
     // Merge client and server todos (last-write-wins based on updated_at)
     const todosToUpsert: typeof clientTodos = [];
+    const conflictResolutions: Array<{ todoId: string; winner: 'client' | 'server'; clientTime: number; serverTime: number }> = [];
 
     // Process client todos - add to upsert list if newer or doesn't exist on server
     clientTodos.forEach((clientTodo) => {
@@ -59,10 +73,24 @@ export async function todoRoutes(fastify: FastifyInstance) {
         // Client version is newer or equal - include client version
         console.log('Client todo is newer:', clientTodo.id, clientTodo.updated_at, 'vs', serverTodo.updated_at);
         todosToUpsert.push(clientTodo);
+        if (clientTodo.updated_at !== serverTodo.updated_at) {
+          conflictResolutions.push({
+            todoId: clientTodo.id,
+            winner: 'client',
+            clientTime: clientTodo.updated_at,
+            serverTime: serverTodo.updated_at,
+          });
+        }
       } else {
         // Server version is newer - keep server version
         console.log('Server todo is newer:', serverTodo.id);
         todosToUpsert.push(serverTodo);
+        conflictResolutions.push({
+          todoId: serverTodo.id,
+          winner: 'server',
+          clientTime: clientTodo.updated_at,
+          serverTime: serverTodo.updated_at,
+        });
       }
     });
 
@@ -97,6 +125,39 @@ export async function todoRoutes(fastify: FastifyInstance) {
     };
 
     console.log('Sending response with', response.todos.length, 'todos');
+
+    // Log conflict resolutions
+    if (conflictResolutions.length > 0) {
+      fastify.log.info({
+        userId,
+        syncMethod,
+        correlationId,
+        conflictCount: conflictResolutions.length,
+        resolutions: conflictResolutions,
+        timestamp: new Date().toISOString(),
+      }, '[HTTP_SYNC] Conflict resolutions');
+    }
+
+    // Broadcast to all user's connected devices
+    broadcastToUser(
+      userId,
+      {
+        event: 'todos:synced',
+        data: response.todos,
+        correlationId,
+      },
+      fastify
+    );
+
+    fastify.log.info({
+      userId,
+      syncMethod,
+      operationType: 'sync',
+      todosCount: response.todos.length,
+      correlationId,
+      timestamp: new Date().toISOString(),
+    }, '[HTTP_SYNC] Sync completed');
+
     return response;
   });
 
@@ -108,19 +169,52 @@ export async function todoRoutes(fastify: FastifyInstance) {
       const userId = request.user.userId;
       const { id } = request.params;
       const { text, completed } = request.body;
+      const correlationId = randomUUID();
+      const syncMethod = 'http';
+
+      fastify.log.info({
+        userId,
+        syncMethod,
+        operationType: 'update',
+        todoId: id,
+        correlationId,
+        timestamp: new Date().toISOString(),
+      }, '[HTTP_SYNC] Update request received');
 
       const todo = await todoQueries.update(id, userId, text, completed);
       if (!todo) {
         return reply.code(404).send({ error: 'Todo not found' });
       }
 
-      return {
+      const todoResponse = {
         id: todo.id,
         text: todo.text,
         completed: todo.completed,
         created_at: new Date(todo.created_at).getTime(),
         updated_at: new Date(todo.updated_at).getTime(),
       };
+
+      // Broadcast to all user's connected devices
+      broadcastToUser(
+        userId,
+        {
+          event: 'todo:updated',
+          data: [todoResponse],
+          correlationId,
+        },
+        fastify
+      );
+
+      fastify.log.info({
+        userId,
+        syncMethod,
+        operationType: 'update',
+        todoId: id,
+        correlationId,
+        timestamp: new Date().toISOString(),
+      }, '[HTTP_SYNC] Update completed');
+
+      return todoResponse;
     }
   );
 
@@ -131,11 +225,42 @@ export async function todoRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const userId = request.user.userId;
       const { id } = request.params;
+      const correlationId = randomUUID();
+      const syncMethod = 'http';
+
+      fastify.log.info({
+        userId,
+        syncMethod,
+        operationType: 'delete',
+        todoId: id,
+        correlationId,
+        timestamp: new Date().toISOString(),
+      }, '[HTTP_SYNC] Delete request received');
 
       const deleted = await todoQueries.delete(id, userId);
       if (!deleted) {
         return reply.code(404).send({ error: 'Todo not found' });
       }
+
+      // Broadcast to all user's connected devices
+      broadcastToUser(
+        userId,
+        {
+          event: 'todo:deleted',
+          data: [{ id }],
+          correlationId,
+        },
+        fastify
+      );
+
+      fastify.log.info({
+        userId,
+        syncMethod,
+        operationType: 'delete',
+        todoId: id,
+        correlationId,
+        timestamp: new Date().toISOString(),
+      }, '[HTTP_SYNC] Delete completed');
 
       return { success: true };
     }

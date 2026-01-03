@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Todo, SyncStatus } from '../types';
 import { apiClient } from '../services/api';
 import { useLocalStorage } from './useLocalStorage';
+import { wsService } from '../services/websocket';
 
 interface SyncQueueItem {
   type: 'create' | 'update' | 'delete';
@@ -12,6 +13,31 @@ interface SyncQueueItem {
 const SYNC_QUEUE_KEY = 'openlist-sync-queue';
 const LAST_SYNC_KEY = 'openlist-last-sync';
 
+const DEBUG_KEY = 'openlist:debug';
+
+function isDebugMode(): boolean {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(DEBUG_KEY) === 'true';
+  }
+  return false;
+}
+
+function logSync(prefix: string, message: string, data?: any) {
+  if (isDebugMode()) {
+    console.group(`[${prefix}] ${message}`);
+    if (data) {
+      console.log(data);
+    }
+    console.groupEnd();
+  } else {
+    if (data) {
+      console.log(`[${prefix}] ${message}`, data);
+    } else {
+      console.log(`[${prefix}] ${message}`);
+    }
+  }
+}
+
 export function useSync() {
   const [todos, setTodos] = useLocalStorage<Todo[]>('openlist-todos', []);
   const [syncQueue, setSyncQueue] = useLocalStorage<SyncQueueItem[]>(SYNC_QUEUE_KEY, []);
@@ -19,7 +45,9 @@ export function useSync() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [wsConnected, setWsConnected] = useState(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncStatsRef = useRef({ websocket: 0, http: 0 });
 
   // Monitor online/offline status
   useEffect(() => {
@@ -35,6 +63,170 @@ export function useSync() {
     };
   }, []);
 
+  // Merge todos from server with conflict resolution
+  const mergeTodosFromServer = useCallback((serverTodos: Todo[]) => {
+    setTodos((prev) => {
+      const merged = new Map<string, Todo>();
+
+      // Add all local todos first
+      prev.forEach((todo) => {
+        merged.set(todo.id, todo);
+      });
+
+      // Merge server todos (server wins if timestamp is newer or equal)
+      serverTodos.forEach((serverTodo) => {
+        const localTodo = merged.get(serverTodo.id);
+        if (!localTodo) {
+          // New todo from server
+          merged.set(serverTodo.id, serverTodo);
+          logSync('SYNC', 'Added new todo from server', { todoId: serverTodo.id });
+        } else {
+          // Conflict resolution: use server version if it's newer or equal
+          if (serverTodo.updatedAt >= localTodo.updatedAt) {
+            merged.set(serverTodo.id, serverTodo);
+            if (serverTodo.updatedAt > localTodo.updatedAt) {
+              logSync('CONFLICT', 'Server version kept', {
+                todoId: serverTodo.id,
+                serverTime: serverTodo.updatedAt,
+                localTime: localTodo.updatedAt,
+              });
+            }
+          } else {
+            logSync('CONFLICT', 'Local version kept', {
+              todoId: serverTodo.id,
+              serverTime: serverTodo.updatedAt,
+              localTime: localTodo.updatedAt,
+            });
+          }
+        }
+      });
+
+      const mergedArray = Array.from(merged.values());
+      logSync('SYNC', 'State merged', {
+        localCount: prev.length,
+        serverCount: serverTodos.length,
+        mergedCount: mergedArray.length,
+      });
+
+      return mergedArray;
+    });
+    setLastSyncTime(Date.now());
+  }, [setTodos, setLastSyncTime]);
+
+  // Initialize WebSocket connection when authenticated
+  useEffect(() => {
+    const checkAndConnect = () => {
+      const token = localStorage.getItem('auth_token');
+      const isConnected = wsService.isConnected();
+      
+      if (token && !isConnected) {
+        logSync('WS', 'Connecting WebSocket...', { hasToken: !!token });
+        wsService.connect(token);
+      } else if (!token && isConnected) {
+        logSync('WS', 'Disconnecting WebSocket (no token)');
+        wsService.disconnect();
+        setWsConnected(false);
+      } else if (token && isConnected) {
+        // Already connected, just update state
+        setWsConnected(true);
+      }
+    };
+
+    // Check immediately
+    checkAndConnect();
+
+    // Listen for connection state changes
+    const checkConnection = () => {
+      const isConnected = wsService.isConnected();
+      if (isConnected !== wsConnected) {
+        logSync('WS', `Connection state changed: ${wsConnected ? 'disconnected' : 'connected'} -> ${isConnected ? 'connected' : 'disconnected'}`);
+        setWsConnected(isConnected);
+      }
+    };
+
+    // Check connection state periodically
+    const connectionInterval = setInterval(() => {
+      checkAndConnect();
+      checkConnection();
+    }, 1000);
+    
+    // Also listen for auth token changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token') {
+        logSync('WS', 'Auth token changed, reconnecting WebSocket');
+        checkAndConnect();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Listen for custom auth events
+    const handleAuthChange = () => {
+      logSync('WS', 'Auth state changed, reconnecting WebSocket');
+      checkAndConnect();
+    };
+    window.addEventListener('auth:login', handleAuthChange);
+    window.addEventListener('auth:logout', () => {
+      wsService.disconnect();
+      setWsConnected(false);
+    });
+
+    // Helper to transform server format to client format
+    const transformServerTodos = (serverData: any[]): Todo[] => {
+      return serverData.map((item: any) => ({
+        id: item.id,
+        text: item.text,
+        completed: item.completed,
+        createdAt: item.created_at ?? item.createdAt,
+        updatedAt: item.updated_at ?? item.updatedAt,
+        userId: item.userId,
+      }));
+    };
+
+    // Listen for WebSocket events
+    const unsubscribeCreated = wsService.on('todo:created', (data: any) => {
+      logSync('SYNC', 'Received todo:created event', { data });
+      const todos = Array.isArray(data) ? transformServerTodos(data) : transformServerTodos([data]);
+      mergeTodosFromServer(todos);
+    });
+
+    const unsubscribeUpdated = wsService.on('todo:updated', (data: any) => {
+      logSync('SYNC', 'Received todo:updated event', { data });
+      const todos = Array.isArray(data) ? transformServerTodos(data) : transformServerTodos([data]);
+      mergeTodosFromServer(todos);
+    });
+
+    const unsubscribeDeleted = wsService.on('todo:deleted', (data: any) => {
+      logSync('SYNC', 'Received todo:deleted event', { data });
+      const deletedIds = Array.isArray(data) 
+        ? data.map((d: any) => d.id || d)
+        : [data.id || data];
+      setTodos((prev) => {
+        const deletedSet = new Set(deletedIds);
+        return prev.filter((todo) => !deletedSet.has(todo.id));
+      });
+      setLastSyncTime(Date.now());
+    });
+
+    const unsubscribeSynced = wsService.on('todos:synced', (data: any) => {
+      logSync('SYNC', 'Received todos:synced event', { data });
+      const todos = Array.isArray(data) ? transformServerTodos(data) : transformServerTodos([data]);
+      mergeTodosFromServer(todos);
+    });
+
+    return () => {
+      clearInterval(connectionInterval);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth:login', handleAuthChange);
+      window.removeEventListener('auth:logout', handleAuthChange);
+      unsubscribeCreated();
+      unsubscribeUpdated();
+      unsubscribeDeleted();
+      unsubscribeSynced();
+      // Don't disconnect on unmount - keep connection alive for other components
+      // wsService.disconnect();
+    };
+  }, [wsConnected, mergeTodosFromServer]);
+
   // Auto-sync when coming online
   useEffect(() => {
     if (isOnline && syncQueue.length > 0 && !isSyncing) {
@@ -43,11 +235,12 @@ export function useSync() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
 
-  // Periodic sync (every 30 seconds when online)
+  // Periodic sync (every 30 seconds when online, only if WebSocket is disconnected)
   useEffect(() => {
-    if (isOnline) {
+    if (isOnline && !wsConnected) {
       const interval = setInterval(() => {
         if (!isSyncing && syncQueue.length > 0) {
+          logSync('SYNC', 'Periodic sync triggered (WebSocket disconnected)');
           syncWithServer();
         }
       }, 30000);
@@ -55,7 +248,7 @@ export function useSync() {
       return () => clearInterval(interval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline, isSyncing, syncQueue.length]);
+  }, [isOnline, isSyncing, syncQueue.length, wsConnected]);
 
   const addToSyncQueue = useCallback((todo: Todo, type: 'create' | 'update' | 'delete') => {
     setSyncQueue((prev) => [
@@ -73,8 +266,24 @@ export function useSync() {
       return;
     }
 
+    // Use HTTP fallback if WebSocket is not connected
+    const syncMethod = wsConnected ? 'websocket' : 'http';
+    
+    // For WebSocket, we don't do full sync - commands are sent individually
+    // Only use HTTP sync when WebSocket is disconnected
+    if (syncMethod === 'websocket' && !isInitialSync) {
+      logSync('SYNC', 'Skipping HTTP sync - WebSocket connected');
+      return;
+    }
+
+    logSync('SYNC', `Using ${syncMethod.toUpperCase()} fallback`, {
+      isInitialSync,
+      todosCount: todosToSyncOverride?.length || todos.length,
+    });
+
     setIsSyncing(true);
     setSyncError(null);
+    const syncStartTime = Date.now();
 
     try {
       // Use override if provided, otherwise use current todos state
@@ -84,7 +293,7 @@ export function useSync() {
       // Don't sync if we have no todos and this is not an initial sync
       // This prevents overwriting local todos with empty server response
       if (currentTodos.length === 0 && !isInitialSync) {
-        console.log('Skipping sync - no todos to sync and not initial sync');
+        logSync('SYNC', 'Skipping sync - no todos to sync and not initial sync');
         setIsSyncing(false);
         return;
       }
@@ -95,12 +304,23 @@ export function useSync() {
         updatedAt: todo.updatedAt || todo.createdAt,
       }));
 
-      console.log('Syncing todos:', preparedTodos.length, preparedTodos);
+      logSync('SYNC', 'Syncing todos', {
+        method: syncMethod,
+        count: preparedTodos.length,
+        dataSize: JSON.stringify(preparedTodos).length,
+      });
 
       // Sync with server - server handles conflict resolution
       const syncedTodos = await apiClient.syncTodos(preparedTodos);
 
-      console.log('Received from server:', syncedTodos.length, syncedTodos);
+      const syncDuration = Date.now() - syncStartTime;
+      syncStatsRef.current.http++;
+
+      logSync('SYNC', 'Received from server', {
+        method: syncMethod,
+        count: syncedTodos.length,
+        duration: `${syncDuration}ms`,
+      });
 
       // Server returns the merged state, so we can directly use it
       // But we need to ensure format matches our Todo type
@@ -111,8 +331,6 @@ export function useSync() {
         createdAt: todo.createdAt,
         updatedAt: todo.updatedAt,
       }));
-
-      console.log('Merged todos:', mergedTodos.length, mergedTodos);
 
       // Only update if we got todos back, or if we had todos to sync
       // This prevents overwriting with empty response
@@ -126,12 +344,12 @@ export function useSync() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Sync failed';
       setSyncError(errorMessage);
-      console.error('Sync error:', error);
+      logSync('SYNC', 'Sync error', { method: syncMethod, error: errorMessage });
       // Don't clear local todos on error - keep what we have
     } finally {
       setIsSyncing(false);
     }
-  }, [todos, isSyncing, setTodos, setSyncQueue, setLastSyncTime]);
+  }, [todos, isSyncing, wsConnected, setTodos, setSyncQueue, setLastSyncTime]);
 
   const addTodo = useCallback((text: string) => {
     const now = Date.now();
@@ -143,72 +361,123 @@ export function useSync() {
       updatedAt: now,
     };
 
-    // Update state and get the new todos array immediately
-    setTodos((prev) => {
-      const updatedTodos = [newTodo, ...prev];
-      
-      // Trigger sync with the updated todos to avoid stale state
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-      syncTimeoutRef.current = setTimeout(() => {
-        if (isOnline) {
-          // Pass the updated todos directly to avoid stale state
-          syncWithServer(updatedTodos);
-        }
-      }, 1000);
-      
-      return updatedTodos;
-    });
+    // Update state immediately
+    setTodos((prev) => [newTodo, ...prev]);
     
-    addToSyncQueue(newTodo, 'create');
-  }, [setTodos, addToSyncQueue, isOnline, syncWithServer]);
-
-  const updateTodo = useCallback((id: string, updates: Partial<Todo>) => {
-    setTodos((prev) => {
-      const updatedTodos = prev.map((todo) => {
-        if (todo.id === id) {
-          const updated = {
-            ...todo,
-            ...updates,
-            updatedAt: Date.now(),
-          };
-          addToSyncQueue(updated, 'update');
-          return updated;
-        }
-        return todo;
+    // Send via WebSocket if connected, otherwise use HTTP fallback
+    if (wsConnected && wsService.isConnected()) {
+      logSync('SYNC', 'Using WebSocket', { operation: 'create', todoId: newTodo.id });
+      syncStatsRef.current.websocket++;
+      wsService.sendCommand({
+        type: 'todo:create',
+        payload: {
+          id: newTodo.id,
+          text: newTodo.text,
+          completed: newTodo.completed,
+          createdAt: newTodo.createdAt,
+          updatedAt: newTodo.updatedAt,
+        },
       });
-
-      // Trigger sync with updated todos
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-      syncTimeoutRef.current = setTimeout(() => {
-        if (isOnline) {
-          syncWithServer(updatedTodos);
-        }
-      }, 1000);
-
-      return updatedTodos;
-    });
-  }, [setTodos, addToSyncQueue, isOnline, syncWithServer]);
-
-  const deleteTodo = useCallback((id: string) => {
-    const todoToDelete = todos.find((t) => t.id === id);
-    if (todoToDelete) {
+    } else {
+      logSync('SYNC', 'Using HTTP fallback', { operation: 'create', todoId: newTodo.id });
+      // Update state and get the new todos array immediately
       setTodos((prev) => {
-        const updatedTodos = prev.filter((t) => t.id !== id);
+        const updatedTodos = [newTodo, ...prev];
         
-        // Trigger sync with updated todos immediately for deletes
-        if (isOnline) {
-          syncWithServer(updatedTodos);
+        // Trigger sync with the updated todos to avoid stale state
+        if (syncTimeoutRef.current) {
+          clearTimeout(syncTimeoutRef.current);
         }
+        syncTimeoutRef.current = setTimeout(() => {
+          if (isOnline) {
+            // Pass the updated todos directly to avoid stale state
+            syncWithServer(updatedTodos);
+          }
+        }, 1000);
         
         return updatedTodos;
       });
+      
+      addToSyncQueue(newTodo, 'create');
+    }
+  }, [setTodos, addToSyncQueue, isOnline, syncWithServer, wsConnected]);
+
+  const updateTodo = useCallback((id: string, updates: Partial<Todo>) => {
+    setTodos((prev) => {
+      const todo = prev.find((t) => t.id === id);
+      if (!todo) return prev;
+
+      const updated = {
+        ...todo,
+        ...updates,
+        updatedAt: Date.now(),
+      };
+
+      // Send via WebSocket if connected, otherwise use HTTP fallback
+      if (wsConnected && wsService.isConnected()) {
+        logSync('SYNC', 'Using WebSocket', { operation: 'update', todoId: id });
+        syncStatsRef.current.websocket++;
+        wsService.sendCommand({
+          type: 'todo:update',
+          payload: {
+            id: updated.id,
+            text: updated.text,
+            completed: updated.completed,
+            createdAt: updated.createdAt,
+            updatedAt: updated.updatedAt,
+          },
+        });
+      } else {
+        logSync('SYNC', 'Using HTTP fallback', { operation: 'update', todoId: id });
+        addToSyncQueue(updated, 'update');
+        
+        // Trigger sync with updated todos
+        if (syncTimeoutRef.current) {
+          clearTimeout(syncTimeoutRef.current);
+        }
+        syncTimeoutRef.current = setTimeout(() => {
+          if (isOnline) {
+            const updatedTodos = prev.map((t) => (t.id === id ? updated : t));
+            syncWithServer(updatedTodos);
+          }
+        }, 1000);
+      }
+
+      return prev.map((t) => (t.id === id ? updated : t));
+    });
+  }, [setTodos, addToSyncQueue, isOnline, syncWithServer, wsConnected]);
+
+  const deleteTodo = useCallback((id: string) => {
+    const todoToDelete = todos.find((t) => t.id === id);
+    if (!todoToDelete) return;
+
+    // Update state immediately
+    setTodos((prev) => prev.filter((t) => t.id !== id));
+
+    // Send via WebSocket if connected, otherwise use HTTP fallback
+    if (wsConnected && wsService.isConnected()) {
+      logSync('SYNC', 'Using WebSocket', { operation: 'delete', todoId: id });
+      syncStatsRef.current.websocket++;
+      wsService.sendCommand({
+        type: 'todo:delete',
+        payload: {
+          id: todoToDelete.id,
+          text: todoToDelete.text,
+          completed: todoToDelete.completed,
+          createdAt: todoToDelete.createdAt,
+          updatedAt: todoToDelete.updatedAt,
+        },
+      });
+    } else {
+      logSync('SYNC', 'Using HTTP fallback', { operation: 'delete', todoId: id });
+      // Trigger sync with updated todos immediately for deletes
+      if (isOnline) {
+        const updatedTodos = todos.filter((t) => t.id !== id);
+        syncWithServer(updatedTodos);
+      }
       addToSyncQueue(todoToDelete, 'delete');
     }
-  }, [todos, setTodos, addToSyncQueue, isOnline, syncWithServer]);
+  }, [todos, setTodos, addToSyncQueue, isOnline, syncWithServer, wsConnected]);
 
   const syncStatus: SyncStatus = {
     isOnline,
