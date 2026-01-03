@@ -15,6 +15,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
   const [authView, setAuthView] = useState<AuthView>('login');
   const [isLoading, setIsLoading] = useState(true);
+  const [showCompleted, setShowCompleted] = useState(false);
   const { todos, addTodo, updateTodo, deleteTodo, syncWithServer, syncStatus } = useSync();
 
   // Initial sync on mount if authenticated
@@ -55,8 +56,13 @@ function App() {
     }
   }, [todos, updateTodo]);
 
+  // Filter and sort todos
+  const filteredTodos = showCompleted 
+    ? todos 
+    : todos.filter((t) => !t.completed);
+  
   // Sort todos: incomplete first, then by creation date
-  const sortedTodos = [...todos].sort((a, b) => {
+  const sortedTodos = [...filteredTodos].sort((a, b) => {
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1;
     }
@@ -119,9 +125,19 @@ function App() {
           </div>
           
           {totalCount > 0 && (
-            <p className="text-sm sm:text-base text-gray-500 mb-2">
-              {completedCount} of {totalCount} completed
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm sm:text-base text-gray-500">
+                {completedCount} of {totalCount} completed
+              </p>
+              {completedCount > 0 && (
+                <button
+                  onClick={() => setShowCompleted(!showCompleted)}
+                  className="text-sm text-primary-600 hover:text-primary-700 px-3 py-1.5 rounded-lg hover:bg-primary-50 transition-colors font-medium"
+                >
+                  {showCompleted ? 'Hide' : 'Show'} completed
+                </button>
+              )}
+            </div>
           )}
 
           {/* Sync Status */}
