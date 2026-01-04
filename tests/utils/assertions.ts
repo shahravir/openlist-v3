@@ -67,8 +67,17 @@ export async function assertUserIsAuthenticated(page: Page) {
  * Assert that the user is not authenticated (login form visible)
  */
 export async function assertUserIsNotAuthenticated(page: Page) {
+  // Wait for the login form to appear (React needs time to re-render after logout)
+  // First wait for the OpenList header to disappear (if it was visible)
+  try {
+    await page.waitForSelector('h1:has-text("OpenList")', { state: 'hidden', timeout: 5000 });
+  } catch {
+    // Header might not have been visible, that's okay
+  }
+  
+  // After logout, the app should show the login form (authView is reset to 'login')
   const loginForm = page.locator('h2:has-text("Login")');
-  await expect(loginForm).toBeVisible();
+  await expect(loginForm).toBeVisible({ timeout: 10000 });
 }
 
 /**

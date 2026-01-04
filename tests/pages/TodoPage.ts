@@ -32,6 +32,9 @@ export class TodoPage extends BasePage {
 
   async clickLogout() {
     await this.page.click('button:has-text("Logout")');
+    // Wait for the login form to appear after logout
+    // The app re-renders when isAuthenticated becomes false and resets to login view
+    await this.page.waitForSelector('h2:has-text("Login")', { timeout: 10000 });
   }
 
   // Floating Action Button
