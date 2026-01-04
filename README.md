@@ -9,6 +9,7 @@ A minimalist, production-ready todo list application optimized for mobile, iPad,
 - 💾 Local storage persistence with PostgreSQL sync
 - 🔐 JWT-based authentication
 - 🔄 Offline-first sync with conflict resolution
+- 🎯 Drag & drop todo reordering with keyboard accessibility
 - ⚡ Fast and lightweight
 - 🎨 Modern, minimalist design
 
@@ -72,6 +73,7 @@ npm run preview
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
 - **Tailwind CSS** - Styling
+- **@dnd-kit** - Drag and drop functionality
 - **Axios** - HTTP client
 - **Local Storage** - Offline-first data persistence
 
@@ -89,6 +91,7 @@ The app uses an offline-first architecture:
 - Last-write-wins conflict resolution based on timestamps
 - Automatic background sync every 30 seconds when online
 - Manual sync on login and when coming back online
+- Todo order is persisted and synced across devices
 
 ## Design Philosophy
 
@@ -98,6 +101,31 @@ The app uses an offline-first architecture:
 - Touch-optimized interactions
 - Production-ready code quality
 - Offline-first for reliability
+
+## Drag & Drop Reordering
+
+OpenList V3 includes a fully accessible drag-and-drop reordering system that works seamlessly across devices:
+
+### Features
+- **Drag Handle**: Touch and mouse-friendly drag handles on each todo item
+- **Visual Feedback**: Real-time visual feedback during dragging with overlay effects
+- **Haptic Feedback**: Tactile feedback on mobile devices when dragging starts/ends
+- **Keyboard Accessibility**: Up/down arrow buttons for users who prefer keyboard navigation
+- **Disabled States**: Appropriate button states (e.g., up button disabled on first item)
+- **Persistence**: Order is saved locally and synced to the server
+- **Cross-Device Sync**: Order changes sync across all your devices in real-time
+- **Responsive**: Works on all screen sizes (mobile, tablet, desktop)
+
+### How to Use
+1. **Drag & Drop**: Click and hold the drag handle (☰ icon) and drag the todo to a new position
+2. **Keyboard**: Use the up/down arrow buttons visible on each todo item
+3. **Mobile**: Touch and drag the drag handle to reorder on touch devices
+
+### Implementation Details
+- Built with [@dnd-kit](https://dndkit.com/) for accessibility and performance
+- Order field stored in database with efficient indexing
+- Optimistic UI updates with background sync
+- Conflict resolution using last-write-wins strategy
 
 ## Testing
 
@@ -141,6 +169,7 @@ The E2E test suite covers:
 
 - **Authentication**: Registration, login, logout, session persistence, protected routes
 - **Todo CRUD**: Create, read, update, delete operations
+- **Todo Reordering**: Drag-and-drop reordering, keyboard-based reordering (up/down buttons)
 - **Search & Filter**: Text search, status filters, keyboard shortcuts (Ctrl/Cmd+K)
 - **Sync**: Real-time synchronization with server, offline support
 - **Responsive Design**: Mobile, tablet, and desktop viewports
@@ -153,6 +182,7 @@ The E2E test suite covers:
 tests/
 ├── auth.spec.ts           # Authentication tests
 ├── todos.spec.ts          # Todo CRUD operations
+├── reorder.spec.ts        # Drag-and-drop reordering tests
 ├── search.spec.ts         # Search and filter functionality
 ├── sync.spec.ts           # Synchronization tests
 ├── responsive.spec.ts     # Responsive design tests
