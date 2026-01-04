@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { SyncRequest, SyncResponse } from '../types.js';
 import { broadcastToUser } from '../websocket.js';
 import { randomUUID } from 'crypto';
+import { MAX_TODO_LENGTH, MIN_TODO_LENGTH } from '../constants.js';
 
 export async function todoRoutes(fastify: FastifyInstance) {
   // Get all todos
@@ -173,11 +174,11 @@ export async function todoRoutes(fastify: FastifyInstance) {
       const syncMethod = 'http';
 
       // Validate text
-      if (!text || text.trim().length === 0) {
+      if (!text || text.trim().length < MIN_TODO_LENGTH) {
         return reply.code(400).send({ error: 'Todo text cannot be empty' });
       }
-      if (text.length > 500) {
-        return reply.code(400).send({ error: 'Todo text cannot exceed 500 characters' });
+      if (text.length > MAX_TODO_LENGTH) {
+        return reply.code(400).send({ error: `Todo text cannot exceed ${MAX_TODO_LENGTH} characters` });
       }
 
       fastify.log.info({

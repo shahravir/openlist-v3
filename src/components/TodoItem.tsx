@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Todo } from '../types';
+import { MAX_TODO_LENGTH } from '../utils/constants';
 
 interface TodoItemProps {
   todo: Todo;
@@ -25,7 +26,13 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
       announcement.className = 'sr-only';
       announcement.textContent = 'Edit mode activated';
       document.body.appendChild(announcement);
-      setTimeout(() => document.body.removeChild(announcement), 1000);
+      
+      // Cleanup function to remove announcement
+      return () => {
+        if (document.body.contains(announcement)) {
+          document.body.removeChild(announcement);
+        }
+      };
     }
   }, [isEditing]);
 
@@ -36,7 +43,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
 
   const handleSave = () => {
     const trimmedText = editText.trim();
-    if (trimmedText && trimmedText !== todo.text && trimmedText.length <= 500) {
+    if (trimmedText && trimmedText !== todo.text && trimmedText.length <= MAX_TODO_LENGTH) {
       onUpdate(todo.id, trimmedText);
     }
     setIsEditing(false);
@@ -66,8 +73,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
           value={editText}
           onChange={(e) => setEditText(e.target.value)}
           onKeyDown={handleKeyDown}
-          onBlur={handleSave}
-          maxLength={500}
+          maxLength={MAX_TODO_LENGTH}
           className="flex-1 text-base text-gray-800 bg-transparent border-none outline-none px-0"
           aria-label="Edit todo text"
         />
