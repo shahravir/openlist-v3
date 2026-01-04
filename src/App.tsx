@@ -54,6 +54,10 @@ function App() {
     }
   }, [todos, updateTodo]);
 
+  const handleUpdate = useCallback((id: string, text: string) => {
+    updateTodo(id, { text });
+  }, [updateTodo]);
+
   // Filter and sort todos
   const filteredTodos = showCompleted 
     ? todos 
@@ -154,6 +158,7 @@ function App() {
           todos={sortedTodos}
           onToggle={handleToggle}
           onDelete={deleteTodo}
+          onUpdate={handleUpdate}
         />
       </div>
     </div>
