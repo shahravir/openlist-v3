@@ -6,9 +6,11 @@ interface TodoListProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, text: string) => void;
+  searchQuery?: string;
+  emptyMessage?: string;
 }
 
-export function TodoList({ todos, onToggle, onDelete, onUpdate }: TodoListProps) {
+export function TodoList({ todos, onToggle, onDelete, onUpdate, searchQuery = '', emptyMessage = 'No tasks yet. Tap the + button to add one.' }: TodoListProps) {
   if (todos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -26,7 +28,7 @@ export function TodoList({ todos, onToggle, onDelete, onUpdate }: TodoListProps)
           </svg>
         </div>
         <p className="text-gray-400 text-center text-base">
-          No tasks yet. Tap the + button to add one.
+          {emptyMessage}
         </p>
       </div>
     );
@@ -41,6 +43,7 @@ export function TodoList({ todos, onToggle, onDelete, onUpdate }: TodoListProps)
           onToggle={onToggle}
           onDelete={onDelete}
           onUpdate={onUpdate}
+          searchQuery={searchQuery}
         />
       ))}
     </div>
