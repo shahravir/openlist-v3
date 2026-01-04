@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { TOAST_DURATION_MS, TOAST_ANIMATION_DURATION_MS } from '../utils/constants';
 
 interface ToastProps {
   message: string;
@@ -13,7 +14,7 @@ export function Toast({
   actionLabel = 'Undo',
   onAction,
   onDismiss,
-  duration = 5000,
+  duration = TOAST_DURATION_MS,
 }: ToastProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -44,7 +45,7 @@ export function Toast({
     setIsVisible(false);
     setTimeout(() => {
       onDismiss();
-    }, 300); // Wait for animation to complete
+    }, TOAST_ANIMATION_DURATION_MS); // Wait for animation to complete
   };
 
   const handleAction = () => {

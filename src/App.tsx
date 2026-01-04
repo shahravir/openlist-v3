@@ -33,7 +33,7 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [toastState, setToastState] = useState<ToastState | null>(null);
-  const { todos, addTodo, updateTodo, deleteTodo, reorderTodos, syncWithServer, syncStatus } = useSync();
+  const { todos, addTodo, updateTodo, deleteTodo, restoreTodo, reorderTodos, syncWithServer, syncStatus } = useSync();
   const { addUndoAction, getLastAction, removeLastAction } = useUndoManager();
 
   // Debounced search with configurable delay
@@ -230,8 +230,8 @@ function App() {
     
     switch (action.type) {
       case 'delete':
-        // Restore the deleted todo
-        addTodo(action.todo.text);
+        // Restore the deleted todo with all its properties
+        restoreTodo(action.todo);
         break;
       case 'complete':
         // Restore previous completion state
@@ -245,7 +245,7 @@ function App() {
     
     removeLastAction();
     setToastState(null);
-  }, [getLastAction, removeLastAction, addTodo, updateTodo]);
+  }, [getLastAction, removeLastAction, restoreTodo, updateTodo]);
   
   const handleDismissToast = useCallback(() => {
     setToastState(null);
