@@ -61,6 +61,7 @@ function App() {
   const handleLogout = () => {
     authService.logout();
     setIsAuthenticated(false);
+    setAuthView('login'); // Reset to login view after logout
   };
 
   const handleToggle = useCallback((id: string) => {

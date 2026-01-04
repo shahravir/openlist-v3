@@ -13,7 +13,15 @@
     "mobile:ios:local": "npm run mobile:build:local && npx cap open ios",
     "mobile:android": "npm run mobile:build && npx cap open android",
     "mobile:android:local": "npm run mobile:build:local && npx cap open android",
-    "mobile:sync": "npx cap sync"
+    "mobile:sync": "npx cap sync",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:codegen": "playwright codegen http://localhost:5173",
+    "test:e2e:servers": "concurrently -n frontend,backend -c blue,green \"npm run dev\" \"cd server && npm run dev\"",
+    "test:e2e:all": "npm run test:e2e:servers & sleep 10 && npm run test:e2e"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.0",
@@ -29,6 +37,7 @@
     "@capacitor/android": "^8.0.0",
     "@capacitor/cli": "^8.0.0",
     "@capacitor/ios": "^8.0.0",
+    "@playwright/test": "^1.57.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
@@ -44,4 +53,3 @@
     "vite": "^5.0.8"
   }
 }
-
