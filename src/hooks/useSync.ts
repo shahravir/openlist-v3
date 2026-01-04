@@ -584,6 +584,50 @@ export function useSync() {
     }
   }, [setTodos, isOnline, syncWithServer, wsConnected]);
 
+  const restoreTodo = useCallback((todo: Todo) => {
+    // Send via WebSocket if connected, otherwise use HTTP fallback
+    if (wsConnected && wsService.isConnected()) {
+      logSync('SYNC', 'Restoring via WebSocket', { operation: 'restore', todoId: todo.id });
+      syncStatsRef.current.websocket++;
+      
+      // Update state immediately
+      setTodos((prev) => [todo, ...prev]);
+      
+      // Send command to server
+      wsService.sendCommand({
+        type: 'todo:create',
+        payload: {
+          id: todo.id,
+          text: todo.text,
+          completed: todo.completed,
+          order: todo.order,
+          createdAt: todo.createdAt,
+          updatedAt: todo.updatedAt,
+        },
+      });
+    } else {
+      logSync('SYNC', 'Restoring via HTTP fallback', { operation: 'restore', todoId: todo.id });
+      // Update state and sync
+      setTodos((prev) => {
+        const updatedTodos = [todo, ...prev];
+        
+        // Trigger sync with the updated todos
+        if (syncTimeoutRef.current) {
+          clearTimeout(syncTimeoutRef.current);
+        }
+        syncTimeoutRef.current = setTimeout(() => {
+          if (isOnline) {
+            syncWithServer(updatedTodos);
+          }
+        }, 1000);
+        
+        return updatedTodos;
+      });
+      
+      addToSyncQueue(todo, 'create');
+    }
+  }, [setTodos, addToSyncQueue, isOnline, syncWithServer, wsConnected]);
+
   const syncStatus: SyncStatus = {
     isOnline,
     isSyncing,
@@ -597,6 +641,7 @@ export function useSync() {
     addTodo,
     updateTodo,
     deleteTodo,
+    restoreTodo,
     reorderTodos,
     syncWithServer,
     syncStatus,

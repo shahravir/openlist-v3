@@ -6,7 +6,9 @@ import { Sidebar } from './components/Sidebar';
 import { SearchModal } from './components/SearchModal';
 import { BurgerMenuButton } from './components/BurgerMenuButton';
 import { Backdrop } from './components/Backdrop';
+import { Toast } from './components/Toast';
 import { useSync } from './hooks/useSync';
+import { useUndoManager, UndoAction } from './hooks/useUndoManager';
 import { authService } from './services/auth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
@@ -15,6 +17,11 @@ import { filterTodosBySearch, debounce } from './utils/searchUtils';
 import { SEARCH_DEBOUNCE_DELAY_MS } from './utils/constants';
 
 type AuthView = 'login' | 'register';
+
+interface ToastState {
+  message: string;
+  action: UndoAction;
+}
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
@@ -25,7 +32,9 @@ function App() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-  const { todos, addTodo, updateTodo, deleteTodo, reorderTodos, syncWithServer, syncStatus } = useSync();
+  const [toastState, setToastState] = useState<ToastState | null>(null);
+  const { todos, addTodo, updateTodo, deleteTodo, restoreTodo, reorderTodos, syncWithServer, syncStatus } = useSync();
+  const { addUndoAction, getLastAction, removeLastAction } = useUndoManager();
 
   // Debounced search with configurable delay
   const debouncedSetSearch = useMemo(
@@ -144,13 +153,95 @@ function App() {
   const handleToggle = useCallback((id: string) => {
     const todo = todos.find((t) => t.id === id);
     if (todo) {
+      const previousCompleted = todo.completed;
       updateTodo(id, { completed: !todo.completed });
+      
+      // Create undo action
+      const undoAction: UndoAction = {
+        type: 'complete',
+        todo: { ...todo },
+        previousCompleted,
+      };
+      
+      // Track undo action and show toast
+      addUndoAction(undoAction);
+      setToastState({
+        message: previousCompleted ? 'Task marked as incomplete' : 'Task marked as complete',
+        action: undoAction,
+      });
     }
-  }, [todos, updateTodo]);
+  }, [todos, updateTodo, addUndoAction]);
 
   const handleUpdate = useCallback((id: string, text: string) => {
-    updateTodo(id, { text });
-  }, [updateTodo]);
+    const todo = todos.find((t) => t.id === id);
+    if (todo && text !== todo.text) {
+      const previousText = todo.text;
+      updateTodo(id, { text });
+      
+      // Create undo action
+      const undoAction: UndoAction = {
+        type: 'edit',
+        todo: { ...todo, text },
+        previousText,
+      };
+      
+      // Track undo action and show toast
+      addUndoAction(undoAction);
+      setToastState({
+        message: 'Task updated',
+        action: undoAction,
+      });
+    }
+  }, [todos, updateTodo, addUndoAction]);
+  
+  const handleDelete = useCallback((id: string) => {
+    const todo = todos.find((t) => t.id === id);
+    if (todo) {
+      deleteTodo(id);
+      
+      // Create undo action
+      const undoAction: UndoAction = {
+        type: 'delete',
+        todo: { ...todo },
+      };
+      
+      // Track undo action and show toast
+      addUndoAction(undoAction);
+      setToastState({
+        message: 'Task deleted',
+        action: undoAction,
+      });
+    }
+  }, [todos, deleteTodo, addUndoAction]);
+  
+  const handleUndo = useCallback(() => {
+    const lastAction = getLastAction();
+    if (!lastAction) return;
+    
+    const { action } = lastAction;
+    
+    switch (action.type) {
+      case 'delete':
+        // Restore the deleted todo with all its properties
+        restoreTodo(action.todo);
+        break;
+      case 'complete':
+        // Restore previous completion state
+        updateTodo(action.todo.id, { completed: action.previousCompleted });
+        break;
+      case 'edit':
+        // Restore previous text
+        updateTodo(action.todo.id, { text: action.previousText });
+        break;
+    }
+    
+    removeLastAction();
+    setToastState(null);
+  }, [getLastAction, removeLastAction, restoreTodo, updateTodo]);
+  
+  const handleDismissToast = useCallback(() => {
+    setToastState(null);
+  }, []);
 
   // Filter and sort todos based on search and filter status
   const filteredTodos = useMemo(() => {
@@ -238,7 +329,7 @@ function App() {
         onSearchChange={setSearchQuery}
         filteredTodos={sortedTodos}
         onToggle={handleToggle}
-        onDelete={deleteTodo}
+        onDelete={handleDelete}
         onUpdate={handleUpdate}
         onReorder={reorderTodos}
       />
@@ -301,7 +392,7 @@ function App() {
           <TodoList
             todos={sortedTodos}
             onToggle={handleToggle}
-            onDelete={deleteTodo}
+            onDelete={handleDelete}
             onUpdate={handleUpdate}
             onReorder={reorderTodos}
             searchQuery={debouncedSearchQuery}
@@ -316,6 +407,15 @@ function App() {
 
       {/* Floating Action Button */}
       <FloatingActionButton onAdd={addTodo} />
+      
+      {/* Toast Notification */}
+      {toastState && (
+        <Toast
+          message={toastState.message}
+          onAction={handleUndo}
+          onDismiss={handleDismissToast}
+        />
+      )}
     </div>
   );
 }
