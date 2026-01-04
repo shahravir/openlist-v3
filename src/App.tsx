@@ -142,12 +142,16 @@ function App() {
         {/* Header */}
         <header className="mb-8 sm:mb-10">
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-2">
-                OpenList
-              </h1>
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">
+                  OpenList
+                </h1>
+                {/* Sync Status - Positioned at top */}
+                <SyncStatus status={syncStatus} />
+              </div>
               {user && (
-                <p className="text-sm text-gray-500">{user.email}</p>
+                <p className="text-sm text-gray-500 mt-2">{user.email}</p>
               )}
             </div>
             <button
@@ -179,11 +183,6 @@ function App() {
               />
             </div>
           )}
-
-          {/* Sync Status */}
-          <div className="mt-2">
-            <SyncStatus status={syncStatus} />
-          </div>
         </header>
 
         {/* Todo List */}
