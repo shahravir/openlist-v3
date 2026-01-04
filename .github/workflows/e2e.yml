@@ -1,0 +1,207 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-e2e:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Setup backend (PostgreSQL)
+        run: |
+          # Install PostgreSQL client
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          
+          # Wait for PostgreSQL to be ready
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Setup test database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          # Create test database
+          psql -h localhost -U postgres -c "CREATE DATABASE openlist_test;"
+          
+          # Run migrations
+          cd server
+          if [ -f db/schema.sql ]; then
+            psql -h localhost -U postgres -d openlist_test -f db/schema.sql
+          fi
+
+      - name: Start backend server
+        run: |
+          cd server
+          npm ci
+          
+          # Create test .env file
+          cat > .env << EOF
+          PORT=3001
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/openlist_test
+          JWT_SECRET=test-secret-key-for-e2e-tests
+          NODE_ENV=test
+          EOF
+          
+          # Start server in background
+          npm run dev &
+          
+          # Wait for server to be ready
+          timeout 60 bash -c 'until curl -f http://localhost:3001/health 2>/dev/null; do sleep 2; done' || true
+
+      - name: Run E2E tests (${{ matrix.browser }})
+        run: npx playwright test --project=${{ matrix.browser }}
+        env:
+          BASE_URL: http://localhost:5173
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 30
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+  test-e2e-mobile:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ['Mobile Chrome', 'Mobile Safari']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Setup backend (PostgreSQL)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Setup test database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -c "CREATE DATABASE openlist_test;"
+          cd server
+          if [ -f db/schema.sql ]; then
+            psql -h localhost -U postgres -d openlist_test -f db/schema.sql
+          fi
+
+      - name: Start backend server
+        run: |
+          cd server
+          npm ci
+          cat > .env << EOF
+          PORT=3001
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/openlist_test
+          JWT_SECRET=test-secret-key-for-e2e-tests
+          NODE_ENV=test
+          EOF
+          npm run dev &
+          timeout 60 bash -c 'until curl -f http://localhost:3001/health 2>/dev/null; do sleep 2; done' || true
+
+      - name: Run E2E tests (${{ matrix.device }})
+        run: npx playwright test --project="${{ matrix.device }}"
+        env:
+          BASE_URL: http://localhost:5173
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.device }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.device }}
+          path: test-results/
+          retention-days: 30
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
