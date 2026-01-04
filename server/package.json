@@ -20,8 +20,8 @@
     "@types/bcrypt": "^5.0.2",
     "@types/node": "^20.10.6",
     "@types/pg": "^8.10.9",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.7.0",
     "typescript": "^5.2.2"
   }
 }
-
