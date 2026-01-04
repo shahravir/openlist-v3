@@ -135,10 +135,10 @@ test.describe('Accessibility', () => {
     await todoPage.clickAddButton();
     await todoPage.waitForAddTodoForm();
 
-    // Textarea should be focused
+    // Input should be focused (component uses input, not textarea)
     await page.waitForTimeout(300);
-    const textarea = page.locator('textarea');
-    await expect(textarea).toBeFocused();
+    const input = page.locator('input[aria-label="Todo text"]');
+    await expect(input).toBeFocused();
   });
 
   test('escape key closes modals', async ({ page }) => {
@@ -153,8 +153,8 @@ test.describe('Accessibility', () => {
 
     // Form should be closed
     await page.waitForTimeout(300);
-    const textarea = page.locator('textarea');
-    await expect(textarea).not.toBeVisible();
+    const input = page.locator('input[aria-label="Todo text"]');
+    await expect(input).not.toBeVisible();
   });
 
   test('enter key saves edit', async ({ page }) => {
@@ -338,12 +338,13 @@ test.describe('Accessibility', () => {
     await todoPage.clickAddButton();
     await todoPage.waitForAddTodoForm();
 
-    // Get focusable elements
+    // Get focusable elements (using actual component selectors)
     const focusableElements = await page.evaluate(() => {
       const selectors = [
-        'textarea',
-        'button[aria-label="Add todo"]',
-        'button[aria-label="Cancel"]',
+        'input[aria-label="Todo text"]',
+        'button:has-text("Add Task")',
+        'button:has-text("Cancel")',
+        'button[aria-label="Close"]',
       ];
 
       return selectors.map(sel => {

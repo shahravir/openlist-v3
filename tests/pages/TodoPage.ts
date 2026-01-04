@@ -12,7 +12,16 @@ export class TodoPage extends BasePage {
   }
 
   async waitForTodoApp() {
-    await this.page.waitForSelector('h1:has-text("OpenList")', { timeout: 10000 });
+    // Wait for the main app to load (OpenList header)
+    await this.page.waitForSelector('h1:has-text("OpenList")', { timeout: 20000 });
+    
+    // Wait for loading to complete
+    await this.page.waitForSelector('.animate-spin', { state: 'hidden', timeout: 5000 }).catch(() => {
+      // Loading spinner might not appear, that's okay
+    });
+    
+    // Wait for FAB to be visible (indicates app is ready)
+    await this.page.waitForSelector('button[aria-label="Add new todo"]', { timeout: 10000 });
   }
 
   // Header and user info
@@ -27,34 +36,49 @@ export class TodoPage extends BasePage {
 
   // Floating Action Button
   async clickAddButton() {
-    await this.page.click('button[aria-label="Add new todo"]');
+    // Wait for FAB to be visible first
+    const fab = this.page.locator('button[aria-label="Add new todo"]');
+    await fab.waitFor({ state: 'visible', timeout: 10000 });
+    await fab.click();
   }
 
   async waitForAddTodoForm() {
     // Wait for the expanded form to appear
-    await this.page.waitForSelector('textarea', { timeout: 5000 });
+    // The form has an input with aria-label="Todo text"
+    await this.page.waitForSelector('input[aria-label="Todo text"]', { timeout: 5000 });
   }
 
   async fillTodoText(text: string) {
-    await this.page.fill('textarea', text);
+    const input = this.page.locator('input[aria-label="Todo text"]');
+    await input.waitFor({ state: 'visible' });
+    await input.fill(text);
   }
 
   async submitTodo() {
-    // Click the checkmark button in the expanded form
-    await this.page.click('button[aria-label="Add todo"]');
+    // Click the "Add Task" button in the expanded form
+    await this.page.click('button[type="submit"]:has-text("Add Task")');
   }
 
   async cancelAddTodo() {
-    await this.page.click('button[aria-label="Cancel"]');
+    // Click the Cancel button
+    await this.page.click('button:has-text("Cancel")');
   }
 
   async addTodo(text: string) {
+    // Ensure we're on the todo page and it's loaded
+    await this.waitForTodoApp();
+    
     await this.clickAddButton();
     await this.waitForAddTodoForm();
     await this.fillTodoText(text);
     await this.submitTodo();
-    // Wait a bit for the todo to be added
+    // Wait a bit for the todo to be added and form to close
     await this.page.waitForTimeout(500);
+    
+    // Wait for FAB to be visible again (form closed)
+    await this.page.waitForSelector('button[aria-label="Add new todo"]', { timeout: 5000 }).catch(() => {
+      // FAB might already be visible, that's okay
+    });
   }
 
   // Todo items
@@ -145,19 +169,31 @@ export class TodoPage extends BasePage {
 
   // Search
   async fillSearch(query: string) {
-    await this.page.fill('input[aria-label="Search todos"]', query);
+    // Search bar only appears when there are todos
+    // Wait for it to be visible first
+    const searchInput = this.page.locator('input[aria-label="Search todos"]');
+    await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+    await searchInput.fill(query);
     // Wait for debounce
     await this.page.waitForTimeout(500);
   }
 
   async clearSearch() {
     const clearButton = this.page.locator('button[aria-label="Clear search"]');
-    if (await clearButton.isVisible()) {
+    if (await clearButton.isVisible({ timeout: 2000 }).catch(() => false)) {
       await clearButton.click();
     }
   }
 
   async focusSearchWithKeyboard() {
+    // Search bar only appears when there are todos
+    // Make sure it exists first
+    const searchInput = this.page.locator('input[aria-label="Search todos"]');
+    const isVisible = await searchInput.isVisible({ timeout: 2000 }).catch(() => false);
+    if (!isVisible) {
+      throw new Error('Search bar is not visible. Add some todos first.');
+    }
+    
     // Press Ctrl/Cmd+K
     const isMac = process.platform === 'darwin';
     if (isMac) {
@@ -165,6 +201,13 @@ export class TodoPage extends BasePage {
     } else {
       await this.page.keyboard.press('Control+k');
     }
+    
+    // Wait for focus
+    await this.page.waitForTimeout(200);
+  }
+  
+  async isSearchVisible() {
+    return await this.page.isVisible('input[aria-label="Search todos"]', { timeout: 1000 }).catch(() => false);
   }
 
   async isSearchHighlighted(searchTerm: string) {

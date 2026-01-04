@@ -70,6 +70,8 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
+  /* Note: Backend server should be running on port 3001 */
+  /* Start it manually with: cd server && npm run dev */
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',

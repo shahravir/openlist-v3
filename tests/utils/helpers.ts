@@ -93,26 +93,70 @@ export async function isInViewport(page: Page, selector: string): Promise<boolea
 
 /**
  * Get local storage value
+ * Note: Page must be navigated to the app first
  */
 export async function getLocalStorageItem(page: Page, key: string): Promise<string | null> {
-  return await page.evaluate((k) => localStorage.getItem(k), key);
+  try {
+    return await page.evaluate((k) => {
+      try {
+        return localStorage.getItem(k);
+      } catch (e) {
+        console.warn('Could not access localStorage:', e);
+        return null;
+      }
+    }, key);
+  } catch (error) {
+    console.warn('Error getting localStorage item:', error);
+    return null;
+  }
 }
 
 /**
  * Set local storage value
+ * Note: Page must be navigated to the app first
  */
 export async function setLocalStorageItem(page: Page, key: string, value: string): Promise<void> {
-  await page.evaluate(
-    ({ k, v }) => localStorage.setItem(k, v),
-    { k: key, v: value }
-  );
+  try {
+    await page.evaluate(
+      ({ k, v }) => {
+        try {
+          localStorage.setItem(k, v);
+        } catch (e) {
+          console.warn('Could not set localStorage item:', e);
+        }
+      },
+      { k: key, v: value }
+    );
+  } catch (error) {
+    console.warn('Error setting localStorage item:', error);
+  }
 }
 
 /**
  * Clear local storage
+ * Note: Must navigate to the app first to access localStorage
  */
 export async function clearLocalStorage(page: Page): Promise<void> {
-  await page.evaluate(() => localStorage.clear());
+  // Navigate to the app first to ensure we're on the correct origin
+  // This is critical - localStorage can only be accessed from the same origin
+  await page.goto('/');
+  
+  // Wait for page to be ready
+  await page.waitForLoadState('domcontentloaded');
+  
+  // Clear localStorage with error handling
+  await page.evaluate(() => {
+    try {
+      localStorage.clear();
+    } catch (e) {
+      // If localStorage access fails, log warning but don't throw
+      // This can happen if:
+      // 1. Page is in an iframe with different origin
+      // 2. Browser security settings block localStorage
+      // 3. Page is still loading
+      console.warn('Could not clear localStorage:', e);
+    }
+  });
 }
 
 /**

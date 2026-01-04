@@ -19,7 +19,9 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
-    "test:e2e:codegen": "playwright codegen http://localhost:5173"
+    "test:e2e:codegen": "playwright codegen http://localhost:5173",
+    "test:e2e:servers": "concurrently -n frontend,backend -c blue,green \"npm run dev\" \"cd server && npm run dev\"",
+    "test:e2e:all": "npm run test:e2e:servers & sleep 10 && npm run test:e2e"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.0",
