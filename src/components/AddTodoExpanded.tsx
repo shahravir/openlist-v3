@@ -16,11 +16,14 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
 
   // Focus trap - keep focus within expanded view
   useEffect(() => {
+    const containerRef = inputRef.current?.closest('form');
+    if (!containerRef) return;
+
     const handleTab = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
 
-      const focusableElements = document.querySelectorAll(
-        'input, button:not([disabled])'
+      const focusableElements = containerRef.querySelectorAll(
+        'input:not([disabled]), button:not([disabled])'
       );
       const firstElement = focusableElements[0] as HTMLElement;
       const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
