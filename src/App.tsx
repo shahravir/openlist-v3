@@ -9,6 +9,7 @@ import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
 import { SyncStatus } from './components/SyncStatus';
 import { filterTodosBySearch, debounce } from './utils/searchUtils';
+import { SEARCH_DEBOUNCE_DELAY_MS } from './utils/constants';
 
 type AuthView = 'login' | 'register';
 
@@ -21,9 +22,9 @@ function App() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const { todos, addTodo, updateTodo, deleteTodo, syncWithServer, syncStatus } = useSync();
 
-  // Debounced search with 300ms delay
+  // Debounced search with configurable delay
   const debouncedSetSearch = useMemo(
-    () => debounce(setDebouncedSearchQuery, 300),
+    () => debounce(setDebouncedSearchQuery, SEARCH_DEBOUNCE_DELAY_MS),
     []
   );
 
