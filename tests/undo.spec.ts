@@ -12,6 +12,10 @@ import {
   assertTodoCount,
 } from './utils/assertions';
 
+// Test viewport constants
+const MOBILE_VIEWPORT = { width: 375, height: 667 };
+const DESKTOP_VIEWPORT = { width: 1920, height: 1080 };
+
 test.describe('Undo/Redo Functionality', () => {
   test.beforeEach(async ({ page }) => {
     // Setup authenticated session for each test
@@ -260,11 +264,9 @@ test.describe('Undo/Redo Functionality', () => {
 
   test('toast positioning is responsive on mobile', async ({ page }) => {
     // Set mobile viewport
-    const MOBILE_WIDTH = 375;
-    const MOBILE_HEIGHT = 667;
-    const MOBILE_BOTTOM_THRESHOLD = MOBILE_HEIGHT * 0.75; // Toast should be in bottom 25% of viewport
+    const MOBILE_BOTTOM_THRESHOLD = MOBILE_VIEWPORT.height * 0.75; // Toast should be in bottom 25% of viewport
     
-    await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
+    await page.setViewportSize(MOBILE_VIEWPORT);
 
     const todoPage = new TodoPage(page);
     const todoText = generateUniqueTodoText('Task to delete');
@@ -290,12 +292,10 @@ test.describe('Undo/Redo Functionality', () => {
 
   test('toast positioning is responsive on desktop', async ({ page }) => {
     // Set desktop viewport
-    const DESKTOP_WIDTH = 1920;
-    const DESKTOP_HEIGHT = 1080;
-    const DESKTOP_TOP_THRESHOLD = DESKTOP_HEIGHT * 0.2; // Toast should be in top 20% of viewport
-    const DESKTOP_RIGHT_THRESHOLD = DESKTOP_WIDTH * 0.7; // Toast should be in right 30% of viewport
+    const DESKTOP_TOP_THRESHOLD = DESKTOP_VIEWPORT.height * 0.2; // Toast should be in top 20% of viewport
+    const DESKTOP_RIGHT_THRESHOLD = DESKTOP_VIEWPORT.width * 0.7; // Toast should be in right 30% of viewport
     
-    await page.setViewportSize({ width: DESKTOP_WIDTH, height: DESKTOP_HEIGHT });
+    await page.setViewportSize(DESKTOP_VIEWPORT);
 
     const todoPage = new TodoPage(page);
     const todoText = generateUniqueTodoText('Task to delete');

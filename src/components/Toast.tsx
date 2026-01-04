@@ -53,13 +53,13 @@ export function Toast({
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
-    if (e.targetTouches.length === 0) return;
+    if (e.targetTouches.length === 0 || !e.targetTouches[0]) return;
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientY);
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (e.targetTouches.length === 0) return;
+    if (e.targetTouches.length === 0 || !e.targetTouches[0]) return;
     setTouchEnd(e.targetTouches[0].clientY);
   };
 
