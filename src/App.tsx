@@ -229,6 +229,10 @@ function App() {
         onClose={closeSearchModal}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        filteredTodos={sortedTodos}
+        onToggle={handleToggle}
+        onDelete={deleteTodo}
+        onUpdate={handleUpdate}
       />
 
       {/* Backdrop - Only for mobile/tablet */}
