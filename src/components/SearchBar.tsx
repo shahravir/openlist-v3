@@ -68,7 +68,7 @@ export function SearchBar({ value, onChange, placeholder = 'Search todos...' }: 
           {value && (
             <button
               onClick={handleClear}
-              className="absolute right-3 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
+              className="absolute right-3 w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
               aria-label="Clear search"
             >
               <svg
