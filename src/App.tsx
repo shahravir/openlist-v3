@@ -85,6 +85,7 @@ function App() {
 
   const closeSearchModal = () => {
     setIsSearchModalOpen(false);
+    setSearchQuery(''); // Clear search filter when closing modal
   };
 
   // Keyboard shortcut: Ctrl/Cmd + B to toggle sidebar (mobile/tablet only)
