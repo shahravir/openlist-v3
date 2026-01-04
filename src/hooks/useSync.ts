@@ -10,8 +10,26 @@ interface SyncQueueItem {
   timestamp: number;
 }
 
+// Get user-scoped localStorage keys to prevent cross-user data leakage
+const getStorageKey = (baseKey: string): string => {
+  // Try to get current user ID from auth service
+  try {
+    const authUser = localStorage.getItem('auth_user');
+    if (authUser) {
+      const user = JSON.parse(authUser);
+      if (user?.id) {
+        return `${baseKey}:${user.id}`;
+      }
+    }
+  } catch {
+    // Fallback to base key if parsing fails
+  }
+  return baseKey;
+};
+
 const SYNC_QUEUE_KEY = 'openlist-sync-queue';
 const LAST_SYNC_KEY = 'openlist-last-sync';
+const TODOS_KEY = 'openlist-todos';
 
 const DEBUG_KEY = 'openlist:debug';
 
@@ -39,9 +57,10 @@ function logSync(prefix: string, message: string, data?: any) {
 }
 
 export function useSync() {
-  const [todos, setTodos] = useLocalStorage<Todo[]>('openlist-todos', []);
-  const [syncQueue, setSyncQueue] = useLocalStorage<SyncQueueItem[]>(SYNC_QUEUE_KEY, []);
-  const [lastSyncTime, setLastSyncTime] = useLocalStorage<number | null>(LAST_SYNC_KEY, null);
+  // Use user-scoped keys to prevent cross-user data leakage
+  const [todos, setTodos] = useLocalStorage<Todo[]>(getStorageKey(TODOS_KEY), []);
+  const [syncQueue, setSyncQueue] = useLocalStorage<SyncQueueItem[]>(getStorageKey(SYNC_QUEUE_KEY), []);
+  const [lastSyncTime, setLastSyncTime] = useLocalStorage<number | null>(getStorageKey(LAST_SYNC_KEY), null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);

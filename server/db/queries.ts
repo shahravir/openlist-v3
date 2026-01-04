@@ -78,15 +78,23 @@ export const todoQueries = {
 
         const results: Todo[] = [];
         for (const todo of todos) {
-          // Check if todo exists
-          const existing = await client.query(
-            'SELECT * FROM todos WHERE id = $1 AND user_id = $2',
-            [todo.id, userId]
+          // First check if todo exists globally (for any user)
+          const globalCheck = await client.query(
+            'SELECT * FROM todos WHERE id = $1',
+            [todo.id]
           );
 
-          if (existing.rows.length > 0) {
-            // Update only if client version is newer
-            const existingTodo = existing.rows[0];
+          if (globalCheck.rows.length > 0) {
+            const existingTodo = globalCheck.rows[0];
+            
+            // If todo exists but belongs to a different user, skip it
+            // This prevents duplicate key errors and ensures data isolation
+            if (existingTodo.user_id !== userId) {
+              console.log(`Skipping todo ${todo.id} - belongs to different user (${existingTodo.user_id} vs ${userId})`);
+              continue;
+            }
+            
+            // Todo exists for this user - update only if client version is newer
             const existingUpdatedAt = new Date(existingTodo.updated_at).getTime();
             
             if (todo.updated_at >= existingUpdatedAt) {
@@ -105,15 +113,70 @@ export const todoQueries = {
               results.push(existingTodo);
             }
           } else {
-            // Insert new todo
-            const result = await client.query(
-              `INSERT INTO todos (id, user_id, text, completed, created_at, updated_at)
-               VALUES ($1::uuid, $2::uuid, $3, $4, to_timestamp($5 / 1000.0), to_timestamp($6 / 1000.0))
-               RETURNING *`,
-              [todo.id, userId, todo.text, todo.completed, todo.created_at, todo.updated_at]
-            );
-            if (result.rows[0]) {
-              results.push(result.rows[0]);
+            // Todo doesn't exist - insert new todo
+            // Use ON CONFLICT to handle race conditions gracefully
+            // If conflict occurs and todo belongs to different user, do nothing (skip it)
+            try {
+              const result = await client.query(
+                `INSERT INTO todos (id, user_id, text, completed, created_at, updated_at)
+                 VALUES ($1::uuid, $2::uuid, $3, $4, to_timestamp($5 / 1000.0), to_timestamp($6 / 1000.0))
+                 ON CONFLICT (id) DO NOTHING
+                 RETURNING *`,
+                [todo.id, userId, todo.text, todo.completed, todo.created_at, todo.updated_at]
+              );
+              
+              // If insert succeeded (no conflict), add to results
+              if (result.rows[0]) {
+                results.push(result.rows[0]);
+              } else {
+                // Insert was skipped due to conflict - check if it belongs to this user
+                // If it does, we should update it; if not, skip it
+                const conflictCheck = await client.query(
+                  'SELECT * FROM todos WHERE id = $1',
+                  [todo.id]
+                );
+                if (conflictCheck.rows[0] && conflictCheck.rows[0].user_id === userId) {
+                  // It belongs to this user, update it
+                  const updateResult = await client.query(
+                    `UPDATE todos 
+                     SET text = $1, completed = $2, updated_at = to_timestamp($3 / 1000.0)
+                     WHERE id = $4 AND user_id = $5
+                     RETURNING *`,
+                    [todo.text, todo.completed, todo.updated_at, todo.id, userId]
+                  );
+                  if (updateResult.rows[0]) {
+                    results.push(updateResult.rows[0]);
+                  }
+                } else {
+                  // Belongs to different user, skip it
+                  console.log(`Skipping todo ${todo.id} - conflict with different user's todo`);
+                }
+              }
+            } catch (insertError: any) {
+              // If insert fails due to duplicate key, check ownership and handle accordingly
+              if (insertError?.code === '23505') {
+                const conflictCheck = await client.query(
+                  'SELECT * FROM todos WHERE id = $1',
+                  [todo.id]
+                );
+                if (conflictCheck.rows[0] && conflictCheck.rows[0].user_id !== userId) {
+                  console.log(`Skipping todo ${todo.id} - duplicate key (belongs to different user)`);
+                  continue;
+                }
+                // If it belongs to this user, it's a race condition - try to update
+                const updateResult = await client.query(
+                  `UPDATE todos 
+                   SET text = $1, completed = $2, updated_at = to_timestamp($3 / 1000.0)
+                   WHERE id = $4 AND user_id = $5
+                   RETURNING *`,
+                  [todo.text, todo.completed, todo.updated_at, todo.id, userId]
+                );
+                if (updateResult.rows[0]) {
+                  results.push(updateResult.rows[0]);
+                }
+              } else {
+                throw insertError;
+              }
             }
           }
         }
