@@ -180,7 +180,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, searchQuery = '' 
           <>
             {highlightText(todo.text, searchQuery).map((segment, index) => (
               <span
-                key={index}
+                key={`${index}-${segment.text}`}
                 className={segment.highlight ? 'bg-yellow-200 font-medium' : ''}
               >
                 {segment.text}
