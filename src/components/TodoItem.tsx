@@ -15,6 +15,13 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
   const [announcement, setAnnouncement] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Update editText when todo.text changes externally (e.g., from sync)
+  useEffect(() => {
+    if (!isEditing) {
+      setEditText(todo.text);
+    }
+  }, [todo.text, isEditing]);
+
   // Focus input when entering edit mode
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -159,7 +166,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
       </span>
       <button
         onClick={handleStartEdit}
-        className="flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition-all duration-200 md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
+        className="flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-primary-500 hover:bg-primary-50 focus:text-primary-500 focus:bg-primary-50 transition-all duration-200 md:scale-0 md:group-hover:scale-100 md:focus:scale-100 touch-manipulation"
         aria-label="Edit todo"
       >
         <svg
@@ -176,7 +183,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
       </button>
       <button
         onClick={() => onDelete(todo.id)}
-        className="flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200 md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
+        className="flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 focus:text-red-500 focus:bg-red-50 transition-all duration-200 md:scale-0 md:group-hover:scale-100 md:focus:scale-100 touch-manipulation"
         aria-label="Delete todo"
       >
         <svg
