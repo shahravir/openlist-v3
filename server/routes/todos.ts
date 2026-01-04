@@ -172,6 +172,14 @@ export async function todoRoutes(fastify: FastifyInstance) {
       const correlationId = randomUUID();
       const syncMethod = 'http';
 
+      // Validate text
+      if (!text || text.trim().length === 0) {
+        return reply.code(400).send({ error: 'Todo text cannot be empty' });
+      }
+      if (text.length > 500) {
+        return reply.code(400).send({ error: 'Todo text cannot exceed 500 characters' });
+      }
+
       fastify.log.info({
         userId,
         syncMethod,
