@@ -177,7 +177,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
       if (!text || text.trim().length < MIN_TODO_LENGTH) {
         return reply.code(400).send({ error: 'Todo text cannot be empty' });
       }
-      if (text.length > MAX_TODO_LENGTH) {
+      if (text.trim().length > MAX_TODO_LENGTH) {
         return reply.code(400).send({ error: `Todo text cannot exceed ${MAX_TODO_LENGTH} characters` });
       }
 
