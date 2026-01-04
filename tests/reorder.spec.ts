@@ -24,11 +24,13 @@ test.describe('Todo Reordering', () => {
     const todo3 = generateUniqueTodoText('Third task');
     
     await todoPage.addTodo(todo1);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').first().waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo2);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').nth(1).waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo3);
-    await page.waitForTimeout(1000);
+    await page.locator('[role="listitem"]').nth(2).waitFor({ state: 'visible' });
 
     // Get initial order
     const initialTodos = await page.locator('[role="listitem"]').allTextContents();
@@ -42,8 +44,8 @@ test.describe('Todo Reordering', () => {
     await targetItem.hover();
     await page.mouse.up();
     
-    // Wait for the reorder to take effect
-    await page.waitForTimeout(1000);
+    // Wait for the reorder animation to complete
+    await page.waitForLoadState('networkidle');
     
     // Get new order
     const reorderedTodos = await page.locator('[role="listitem"]').allTextContents();
@@ -61,11 +63,13 @@ test.describe('Todo Reordering', () => {
     const todo3 = generateUniqueTodoText('Third task');
     
     await todoPage.addTodo(todo1);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').first().waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo2);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').nth(1).waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo3);
-    await page.waitForTimeout(1000);
+    await page.locator('[role="listitem"]').nth(2).waitFor({ state: 'visible' });
 
     // Get text of second item
     const secondItemText = await page.locator('[role="listitem"]').nth(1).textContent();
@@ -74,8 +78,8 @@ test.describe('Todo Reordering', () => {
     const upButton = page.locator('[role="listitem"]').nth(1).locator('button[aria-label*="Move"][aria-label*="up"]');
     await upButton.click();
     
-    // Wait for the reorder to take effect
-    await page.waitForTimeout(1000);
+    // Wait for the reorder to complete
+    await page.waitForLoadState('networkidle');
     
     // Verify the second item is now first
     const firstItemText = await page.locator('[role="listitem"]').first().textContent();
@@ -91,11 +95,13 @@ test.describe('Todo Reordering', () => {
     const todo3 = generateUniqueTodoText('Third task');
     
     await todoPage.addTodo(todo1);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').first().waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo2);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').nth(1).waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo3);
-    await page.waitForTimeout(1000);
+    await page.locator('[role="listitem"]').nth(2).waitFor({ state: 'visible' });
 
     // Get text of first item
     const firstItemText = await page.locator('[role="listitem"]').first().textContent();
@@ -104,8 +110,8 @@ test.describe('Todo Reordering', () => {
     const downButton = page.locator('[role="listitem"]').first().locator('button[aria-label*="Move"][aria-label*="down"]');
     await downButton.click();
     
-    // Wait for the reorder to take effect
-    await page.waitForTimeout(1000);
+    // Wait for the reorder to complete
+    await page.waitForLoadState('networkidle');
     
     // Verify the first item is now second
     const secondItemText = await page.locator('[role="listitem"]').nth(1).textContent();
@@ -121,23 +127,25 @@ test.describe('Todo Reordering', () => {
     const todo3 = generateUniqueTodoText('Third task');
     
     await todoPage.addTodo(todo1);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').first().waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo2);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').nth(1).waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo3);
-    await page.waitForTimeout(1000);
+    await page.locator('[role="listitem"]').nth(2).waitFor({ state: 'visible' });
 
     // Move second item up
     const upButton = page.locator('[role="listitem"]').nth(1).locator('button[aria-label*="Move"][aria-label*="up"]');
     await upButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
     
     // Get order after reordering
     const orderAfterReorder = await page.locator('[role="listitem"]').allTextContents();
     
     // Refresh the page
     await page.reload();
-    await page.waitForTimeout(2000);
+    await page.locator('[role="listitem"]').first().waitFor({ state: 'visible' });
     
     // Get order after refresh
     const orderAfterRefresh = await page.locator('[role="listitem"]').allTextContents();
@@ -154,9 +162,10 @@ test.describe('Todo Reordering', () => {
     const todo2 = generateUniqueTodoText('Second task');
     
     await todoPage.addTodo(todo1);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').first().waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo2);
-    await page.waitForTimeout(1000);
+    await page.locator('[role="listitem"]').nth(1).waitFor({ state: 'visible' });
 
     // Check that up button on first item is disabled
     const firstUpButton = page.locator('[role="listitem"]').first().locator('button[aria-label*="Move"][aria-label*="up"]');
@@ -171,9 +180,10 @@ test.describe('Todo Reordering', () => {
     const todo2 = generateUniqueTodoText('Second task');
     
     await todoPage.addTodo(todo1);
-    await page.waitForTimeout(500);
+    await page.locator('[role="listitem"]').first().waitFor({ state: 'visible' });
+    
     await todoPage.addTodo(todo2);
-    await page.waitForTimeout(1000);
+    await page.locator('[role="listitem"]').nth(1).waitFor({ state: 'visible' });
 
     // Check that down button on last item is disabled
     const lastDownButton = page.locator('[role="listitem"]').last().locator('button[aria-label*="Move"][aria-label*="down"]');
