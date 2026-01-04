@@ -2,6 +2,7 @@ export interface Todo {
   id: string;
   text: string;
   completed: boolean;
+  order: number;
   createdAt: number;
   updatedAt: number;
   userId?: string; // Optional, for local-only todos before sync

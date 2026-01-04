@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS todos (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   text TEXT NOT NULL,
   completed BOOLEAN DEFAULT FALSE,
+  "order" INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS todos (
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
 CREATE INDEX IF NOT EXISTS idx_todos_updated_at ON todos(updated_at);
+CREATE INDEX IF NOT EXISTS idx_todos_user_order ON todos(user_id, "order");
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Function to update updated_at timestamp

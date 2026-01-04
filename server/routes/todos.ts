@@ -17,6 +17,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
         id: todo.id,
         text: todo.text,
         completed: todo.completed,
+        order: todo.order,
         created_at: new Date(todo.created_at).getTime(),
         updated_at: new Date(todo.updated_at).getTime(),
       })),
@@ -53,6 +54,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
           id: todo.id,
           text: todo.text,
           completed: todo.completed,
+          order: todo.order,
           created_at: new Date(todo.created_at).getTime(),
           updated_at: new Date(todo.updated_at).getTime(),
         },
@@ -120,6 +122,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
         id: todo.id,
         text: todo.text,
         completed: todo.completed,
+        order: todo.order,
         created_at: new Date(todo.created_at).getTime(),
         updated_at: new Date(todo.updated_at).getTime(),
       })),
@@ -163,13 +166,13 @@ export async function todoRoutes(fastify: FastifyInstance) {
   });
 
   // Update single todo
-  fastify.put<{ Params: { id: string }; Body: { text: string; completed: boolean } }>(
+  fastify.put<{ Params: { id: string }; Body: { text: string; completed: boolean; order?: number } }>(
     '/todos/:id',
     { preHandler: authenticate },
     async (request, reply) => {
       const userId = request.user.userId;
       const { id } = request.params;
-      const { text, completed } = request.body;
+      const { text, completed, order } = request.body;
       const correlationId = randomUUID();
       const syncMethod = 'http';
 
@@ -190,7 +193,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
         timestamp: new Date().toISOString(),
       }, '[HTTP_SYNC] Update request received');
 
-      const todo = await todoQueries.update(id, userId, text, completed);
+      const todo = await todoQueries.update(id, userId, text, completed, order);
       if (!todo) {
         return reply.code(404).send({ error: 'Todo not found' });
       }
@@ -199,6 +202,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
         id: todo.id,
         text: todo.text,
         completed: todo.completed,
+        order: todo.order,
         created_at: new Date(todo.created_at).getTime(),
         updated_at: new Date(todo.updated_at).getTime(),
       };

@@ -195,6 +195,7 @@ export function useSync() {
         id: item.id,
         text: item.text,
         completed: item.completed,
+        order: item.order ?? 0,
         createdAt: item.created_at ?? item.createdAt,
         updatedAt: item.updated_at ?? item.updatedAt,
         userId: item.userId,
@@ -347,6 +348,7 @@ export function useSync() {
         id: todo.id,
         text: todo.text,
         completed: todo.completed,
+        order: todo.order,
         createdAt: todo.createdAt,
         updatedAt: todo.updatedAt,
       }));
@@ -405,10 +407,15 @@ export function useSync() {
 
   const addTodo = useCallback((text: string) => {
     const now = Date.now();
+    
+    // Get the max order from existing todos to append at the end
+    const maxOrder = todos.reduce((max, todo) => Math.max(max, todo.order), 0);
+    
     const newTodo: Todo = {
       id: crypto.randomUUID(),
       text,
       completed: false,
+      order: maxOrder + 1,
       createdAt: now,
       updatedAt: now,
     };
@@ -426,6 +433,7 @@ export function useSync() {
           id: newTodo.id,
           text: newTodo.text,
           completed: newTodo.completed,
+          order: newTodo.order,
           createdAt: newTodo.createdAt,
           updatedAt: newTodo.updatedAt,
         },
@@ -475,6 +483,7 @@ export function useSync() {
             id: updated.id,
             text: updated.text,
             completed: updated.completed,
+            order: updated.order,
             createdAt: updated.createdAt,
             updatedAt: updated.updatedAt,
           },
@@ -516,6 +525,7 @@ export function useSync() {
           id: todoToDelete.id,
           text: todoToDelete.text,
           completed: todoToDelete.completed,
+          order: todoToDelete.order,
           createdAt: todoToDelete.createdAt,
           updatedAt: todoToDelete.updatedAt,
         },
@@ -531,6 +541,49 @@ export function useSync() {
     }
   }, [todos, setTodos, addToSyncQueue, isOnline, syncWithServer, wsConnected]);
 
+  // Reorder todos - updates the order field for multiple todos
+  const reorderTodos = useCallback((reorderedTodos: Todo[]) => {
+    // Update todos with new order values
+    const todosWithNewOrder = reorderedTodos.map((todo, index) => ({
+      ...todo,
+      order: index,
+      updatedAt: Date.now(),
+    }));
+
+    // Update state immediately
+    setTodos(todosWithNewOrder);
+
+    // Send via WebSocket if connected, otherwise use HTTP fallback
+    if (wsConnected && wsService.isConnected()) {
+      logSync('SYNC', 'Reordering via WebSocket', { count: todosWithNewOrder.length });
+      // Send individual updates for each reordered todo
+      todosWithNewOrder.forEach((todo) => {
+        wsService.sendCommand({
+          type: 'todo:update',
+          payload: {
+            id: todo.id,
+            text: todo.text,
+            completed: todo.completed,
+            order: todo.order,
+            createdAt: todo.createdAt,
+            updatedAt: todo.updatedAt,
+          },
+        });
+      });
+    } else {
+      logSync('SYNC', 'Reordering via HTTP fallback', { count: todosWithNewOrder.length });
+      // Trigger sync with reordered todos
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+      syncTimeoutRef.current = setTimeout(() => {
+        if (isOnline) {
+          syncWithServer(todosWithNewOrder);
+        }
+      }, 1000);
+    }
+  }, [setTodos, isOnline, syncWithServer, wsConnected]);
+
   const syncStatus: SyncStatus = {
     isOnline,
     isSyncing,
@@ -544,6 +597,7 @@ export function useSync() {
     addTodo,
     updateTodo,
     deleteTodo,
+    reorderTodos,
     syncWithServer,
     syncStatus,
   };

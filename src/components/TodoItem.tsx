@@ -2,21 +2,44 @@ import { useState, useRef, useEffect } from 'react';
 import { Todo } from '../types';
 import { MAX_TODO_LENGTH, MIN_TODO_LENGTH, NEW_ITEM_DETECTION_WINDOW_MS, ANIMATION_DURATION_MS } from '../utils/constants';
 import { highlightText } from '../utils/searchUtils';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { DragHandle } from './DragHandle';
+import { ReorderButtons } from './ReorderButtons';
 
 interface TodoItemProps {
   todo: Todo;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, text: string) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   searchQuery?: string;
 }
 
-export function TodoItem({ todo, onToggle, onDelete, onUpdate, searchQuery = '' }: TodoItemProps) {
+export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveDown, canMoveUp, canMoveDown, searchQuery = '' }: TodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
   const [announcement, setAnnouncement] = useState<string>('');
   const [isNew, setIsNew] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: todo.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   // Detect if this is a newly added item (created within last NEW_ITEM_DETECTION_WINDOW_MS)
   useEffect(() => {
@@ -93,7 +116,11 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, searchQuery = '' 
             {announcement}
           </div>
         )}
-        <div className="group flex items-center gap-2 px-4 py-3 bg-white rounded-lg shadow-sm border-2 border-primary-400 transition-all duration-200 touch-manipulation">
+        <div 
+          ref={setNodeRef}
+          style={style}
+          className="group flex items-center gap-2 px-4 py-3 bg-white rounded-lg shadow-sm border-2 border-primary-400 transition-all duration-200 touch-manipulation"
+        >
           <input
             ref={inputRef}
             type="text"
@@ -144,7 +171,28 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, searchQuery = '' 
   }
 
   return (
-    <div className={`group flex items-center gap-3 px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 touch-manipulation ${isNew ? 'animate-fade-in-scale' : ''}`}>
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={`group flex items-center gap-3 px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 touch-manipulation ${isNew ? 'animate-fade-in-scale' : ''}`}
+      role="listitem"
+    >
+      {/* Drag Handle */}
+      <div {...attributes} {...listeners}>
+        <DragHandle isDragging={isDragging} />
+      </div>
+      
+      {/* Reorder Buttons for Accessibility */}
+      <div className="hidden md:flex">
+        <ReorderButtons
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+          canMoveUp={canMoveUp}
+          canMoveDown={canMoveDown}
+          todoText={todo.text}
+        />
+      </div>
+      
       <button
         onClick={() => onToggle(todo.id)}
         className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${

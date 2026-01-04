@@ -25,7 +25,7 @@ function App() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-  const { todos, addTodo, updateTodo, deleteTodo, syncWithServer, syncStatus } = useSync();
+  const { todos, addTodo, updateTodo, deleteTodo, reorderTodos, syncWithServer, syncStatus } = useSync();
 
   // Debounced search with configurable delay
   const debouncedSetSearch = useMemo(
@@ -171,12 +171,18 @@ function App() {
     return filtered;
   }, [todos, filterStatus, debouncedSearchQuery]);
   
-  // Sort todos: incomplete first, then by creation date (oldest first, newest at bottom)
+  // Sort todos: by order field primarily, then incomplete first, then by creation date
   const sortedTodos = useMemo(() => {
     return [...filteredTodos].sort((a, b) => {
+      // First sort by order (ascending)
+      if (a.order !== b.order) {
+        return a.order - b.order;
+      }
+      // Then by completion status (incomplete first)
       if (a.completed !== b.completed) {
         return a.completed ? 1 : -1;
       }
+      // Finally by creation date (oldest first)
       return a.createdAt - b.createdAt;
     });
   }, [filteredTodos]);
@@ -234,6 +240,7 @@ function App() {
         onToggle={handleToggle}
         onDelete={deleteTodo}
         onUpdate={handleUpdate}
+        onReorder={reorderTodos}
       />
 
       {/* Backdrop - Only for mobile/tablet */}
@@ -296,6 +303,7 @@ function App() {
             onToggle={handleToggle}
             onDelete={deleteTodo}
             onUpdate={handleUpdate}
+            onReorder={reorderTodos}
             searchQuery={debouncedSearchQuery}
             emptyMessage={
               debouncedSearchQuery || filterStatus !== 'all'

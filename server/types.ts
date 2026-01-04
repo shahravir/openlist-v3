@@ -10,6 +10,7 @@ export interface Todo {
   user_id: string;
   text: string;
   completed: boolean;
+  order: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -37,6 +38,7 @@ export interface SyncRequest {
     id: string;
     text: string;
     completed: boolean;
+    order: number;
     created_at: number;
     updated_at: number;
   }>;
@@ -47,6 +49,7 @@ export interface SyncResponse {
     id: string;
     text: string;
     completed: boolean;
+    order: number;
     created_at: number;
     updated_at: number;
   }>;

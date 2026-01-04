@@ -24,7 +24,7 @@ export const userQueries = {
 export const todoQueries = {
   async findByUserId(userId: string): Promise<Todo[]> {
     const result = await pool.query(
-      'SELECT * FROM todos WHERE user_id = $1 ORDER BY updated_at DESC',
+      'SELECT * FROM todos WHERE user_id = $1 ORDER BY "order" ASC, created_at ASC',
       [userId]
     );
     return result.rows;
@@ -38,19 +38,36 @@ export const todoQueries = {
     return result.rows[0] || null;
   },
 
-  async create(userId: string, text: string, completed: boolean = false): Promise<Todo> {
+  async create(userId: string, text: string, completed: boolean = false, order?: number): Promise<Todo> {
+    // If order is not provided, set it to be after all existing todos
+    if (order === undefined) {
+      const maxOrderResult = await pool.query(
+        'SELECT COALESCE(MAX("order"), 0) as max_order FROM todos WHERE user_id = $1',
+        [userId]
+      );
+      order = (maxOrderResult.rows[0]?.max_order || 0) + 1;
+    }
+    
     const result = await pool.query(
-      'INSERT INTO todos (user_id, text, completed) VALUES ($1, $2, $3) RETURNING *',
-      [userId, text, completed]
+      'INSERT INTO todos (user_id, text, completed, "order") VALUES ($1, $2, $3, $4) RETURNING *',
+      [userId, text, completed, order]
     );
     return result.rows[0];
   },
 
-  async update(id: string, userId: string, text: string, completed: boolean): Promise<Todo | null> {
-    const result = await pool.query(
-      'UPDATE todos SET text = $1, completed = $2 WHERE id = $3 AND user_id = $4 RETURNING *',
-      [text, completed, id, userId]
-    );
+  async update(id: string, userId: string, text: string, completed: boolean, order?: number): Promise<Todo | null> {
+    let query: string;
+    let params: any[];
+    
+    if (order !== undefined) {
+      query = 'UPDATE todos SET text = $1, completed = $2, "order" = $3 WHERE id = $4 AND user_id = $5 RETURNING *';
+      params = [text, completed, order, id, userId];
+    } else {
+      query = 'UPDATE todos SET text = $1, completed = $2 WHERE id = $3 AND user_id = $4 RETURNING *';
+      params = [text, completed, id, userId];
+    }
+    
+    const result = await pool.query(query, params);
     return result.rows[0] || null;
   },
 
@@ -62,7 +79,7 @@ export const todoQueries = {
     return (result.rowCount ?? 0) > 0;
   },
 
-  async bulkUpsert(userId: string, todos: Array<{ id: string; text: string; completed: boolean; created_at: number; updated_at: number }>): Promise<Todo[]> {
+  async bulkUpsert(userId: string, todos: Array<{ id: string; text: string; completed: boolean; order: number; created_at: number; updated_at: number }>): Promise<Todo[]> {
     if (todos.length === 0) {
       return [];
     }
@@ -100,10 +117,10 @@ export const todoQueries = {
             if (todo.updated_at >= existingUpdatedAt) {
               const result = await client.query(
                 `UPDATE todos 
-                 SET text = $1, completed = $2, updated_at = to_timestamp($3 / 1000.0)
-                 WHERE id = $4 AND user_id = $5
+                 SET text = $1, completed = $2, "order" = $3, updated_at = to_timestamp($4 / 1000.0)
+                 WHERE id = $5 AND user_id = $6
                  RETURNING *`,
-                [todo.text, todo.completed, todo.updated_at, todo.id, userId]
+                [todo.text, todo.completed, todo.order, todo.updated_at, todo.id, userId]
               );
               if (result.rows[0]) {
                 results.push(result.rows[0]);
@@ -118,11 +135,11 @@ export const todoQueries = {
             // If conflict occurs and todo belongs to different user, do nothing (skip it)
             try {
               const result = await client.query(
-                `INSERT INTO todos (id, user_id, text, completed, created_at, updated_at)
-                 VALUES ($1::uuid, $2::uuid, $3, $4, to_timestamp($5 / 1000.0), to_timestamp($6 / 1000.0))
+                `INSERT INTO todos (id, user_id, text, completed, "order", created_at, updated_at)
+                 VALUES ($1::uuid, $2::uuid, $3, $4, $5, to_timestamp($6 / 1000.0), to_timestamp($7 / 1000.0))
                  ON CONFLICT (id) DO NOTHING
                  RETURNING *`,
-                [todo.id, userId, todo.text, todo.completed, todo.created_at, todo.updated_at]
+                [todo.id, userId, todo.text, todo.completed, todo.order, todo.created_at, todo.updated_at]
               );
               
               // If insert succeeded (no conflict), add to results
@@ -139,10 +156,10 @@ export const todoQueries = {
                   // It belongs to this user, update it
                   const updateResult = await client.query(
                     `UPDATE todos 
-                     SET text = $1, completed = $2, updated_at = to_timestamp($3 / 1000.0)
-                     WHERE id = $4 AND user_id = $5
+                     SET text = $1, completed = $2, "order" = $3, updated_at = to_timestamp($4 / 1000.0)
+                     WHERE id = $5 AND user_id = $6
                      RETURNING *`,
-                    [todo.text, todo.completed, todo.updated_at, todo.id, userId]
+                    [todo.text, todo.completed, todo.order, todo.updated_at, todo.id, userId]
                   );
                   if (updateResult.rows[0]) {
                     results.push(updateResult.rows[0]);
@@ -166,10 +183,10 @@ export const todoQueries = {
                 // If it belongs to this user, it's a race condition - try to update
                 const updateResult = await client.query(
                   `UPDATE todos 
-                   SET text = $1, completed = $2, updated_at = to_timestamp($3 / 1000.0)
-                   WHERE id = $4 AND user_id = $5
+                   SET text = $1, completed = $2, "order" = $3, updated_at = to_timestamp($4 / 1000.0)
+                   WHERE id = $5 AND user_id = $6
                    RETURNING *`,
-                  [todo.text, todo.completed, todo.updated_at, todo.id, userId]
+                  [todo.text, todo.completed, todo.order, todo.updated_at, todo.id, userId]
                 );
                 if (updateResult.rows[0]) {
                   results.push(updateResult.rows[0]);
