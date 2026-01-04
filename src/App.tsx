@@ -63,12 +63,12 @@ function App() {
     ? todos 
     : todos.filter((t) => !t.completed);
   
-  // Sort todos: incomplete first, then by creation date
+  // Sort todos: incomplete first, then by creation date (oldest first, newest at bottom)
   const sortedTodos = [...filteredTodos].sort((a, b) => {
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1;
     }
-    return b.createdAt - a.createdAt;
+    return a.createdAt - b.createdAt;
   });
 
   const completedCount = todos.filter((t) => t.completed).length;

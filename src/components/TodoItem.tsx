@@ -13,7 +13,19 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
   const [announcement, setAnnouncement] = useState<string>('');
+  const [isNew, setIsNew] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Detect if this is a newly added item (created within last 500ms)
+  useEffect(() => {
+    const now = Date.now();
+    const itemAge = now - todo.createdAt;
+    if (itemAge < 500) {
+      setIsNew(true);
+      const timer = setTimeout(() => setIsNew(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [todo.createdAt]);
 
   // Update editText when todo.text changes externally (e.g., from sync)
   useEffect(() => {
@@ -130,7 +142,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
   }
 
   return (
-    <div className="group flex items-center gap-3 px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 touch-manipulation">
+    <div className={`group flex items-center gap-3 px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 touch-manipulation ${isNew ? 'animate-fade-in-scale' : ''}`}>
       <button
         onClick={() => onToggle(todo.id)}
         className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
