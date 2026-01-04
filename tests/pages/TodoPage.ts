@@ -117,7 +117,8 @@ export class TodoPage extends BasePage {
 
   async toggleTodo(index: number) {
     const todo = this.getTodoItems().nth(index);
-    const toggleButton = todo.locator('button').first();
+    // Use aria-label to target the toggle button specifically (not the reorder buttons)
+    const toggleButton = todo.locator('button[aria-label*="Mark as"]');
     await toggleButton.click();
     // Wait for animation and reordering
     await this.page.waitForTimeout(500);

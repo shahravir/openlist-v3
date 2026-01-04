@@ -10,7 +10,7 @@
             "previewLimit": 50,
             "server": "localhost",
             "driver": "CockroachDB",
-            "connectString": "${env:SQLTOOLS_DATABASE_URL}",
+            "connectString": "postgresql://ravi:3GPC-BL2LtjPkPuzu96hAQ@ravishah-20024.j77.aws-eu-west-2.cockroachlabs.cloud:26257/openlist-v3?sslmode=verify-full",
             "name": "openlist-v3",
             "group": "openlist-v3"
         }

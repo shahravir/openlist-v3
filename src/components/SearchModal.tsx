@@ -12,6 +12,7 @@ interface SearchModalProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, text: string) => void;
+  onReorder: (reorderedTodos: Todo[]) => void;
 }
 
 export function SearchModal({ 
@@ -22,7 +23,8 @@ export function SearchModal({
   filteredTodos,
   onToggle,
   onDelete,
-  onUpdate
+  onUpdate,
+  onReorder
 }: SearchModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +144,7 @@ export function SearchModal({
                   onToggle={onToggle}
                   onDelete={onDelete}
                   onUpdate={onUpdate}
+                  onReorder={onReorder}
                   searchQuery={searchQuery}
                   emptyMessage="No todos match your search."
                 />

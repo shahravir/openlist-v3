@@ -212,11 +212,12 @@ export function setupWebSocket(fastify: FastifyInstance): void {
           // Process command
           try {
             if (command.type === 'todo:create') {
-              const { id, text, completed, created_at, updated_at } = command.payload;
+              const { id, text, completed, order, created_at, updated_at } = command.payload;
               await todoQueries.bulkUpsert(userId, [{
                 id,
                 text,
                 completed,
+                order: order ?? 0,
                 created_at,
                 updated_at,
               }]);
@@ -226,6 +227,7 @@ export function setupWebSocket(fastify: FastifyInstance): void {
                 id: todo.id,
                 text: todo.text,
                 completed: todo.completed,
+                order: todo.order,
                 created_at: new Date(todo.created_at).getTime(),
                 updated_at: new Date(todo.updated_at).getTime(),
               }));
@@ -251,8 +253,8 @@ export function setupWebSocket(fastify: FastifyInstance): void {
                 }, '[WEBSOCKET] Create completed');
               }
             } else if (command.type === 'todo:update') {
-              const { id, text, completed } = command.payload;
-              const todo = await todoQueries.update(id, userId, text, completed);
+              const { id, text, completed, order } = command.payload;
+              const todo = await todoQueries.update(id, userId, text, completed, order);
               
               if (todo) {
                 const allTodos = await todoQueries.findByUserId(userId);
@@ -260,6 +262,7 @@ export function setupWebSocket(fastify: FastifyInstance): void {
                   id: t.id,
                   text: t.text,
                   completed: t.completed,
+                  order: t.order,
                   created_at: new Date(t.created_at).getTime(),
                   updated_at: new Date(t.updated_at).getTime(),
                 }));

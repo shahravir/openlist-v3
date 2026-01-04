@@ -16,6 +16,7 @@ interface Command {
     id: string;
     text?: string;
     completed?: boolean;
+    order?: number;
     createdAt: number;
     updatedAt: number;
   };
