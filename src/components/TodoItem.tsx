@@ -18,6 +18,14 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
+      // Announce edit mode to screen readers
+      const announcement = document.createElement('div');
+      announcement.setAttribute('role', 'status');
+      announcement.setAttribute('aria-live', 'polite');
+      announcement.className = 'sr-only';
+      announcement.textContent = 'Edit mode activated';
+      document.body.appendChild(announcement);
+      setTimeout(() => document.body.removeChild(announcement), 1000);
     }
   }, [isEditing]);
 
