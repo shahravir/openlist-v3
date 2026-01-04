@@ -12,6 +12,7 @@ import {
 import {
   assertTodoExists,
   assertTodoCount,
+  assertTodoCountInModal,
   assertUserIsAuthenticated,
   assertUserIsNotAuthenticated,
 } from './utils/assertions';
@@ -49,11 +50,13 @@ test.describe('Integration Tests - Complete User Flows', () => {
     // Step 3: Search for a specific todo
     await todoPage.fillSearch('groceries');
     await page.waitForTimeout(600);
-    await assertTodoCount(page, 1);
+    // Check count in search modal
+    await assertTodoCountInModal(page, 1);
 
-    // Step 4: Clear search
+    // Step 4: Clear search (closes modal automatically)
     await todoPage.clearSearch();
     await page.waitForTimeout(300);
+    // After clearing, modal is closed, check count in main view
     await assertTodoCount(page, 4);
 
     // Step 5: Logout
@@ -214,10 +217,13 @@ test.describe('Integration Tests - Complete User Flows', () => {
     // Search for "buy"
     await todoPage.fillSearch('buy');
     await page.waitForTimeout(600);
-    await assertTodoCount(page, 2);
+    // Check count in search modal
+    await assertTodoCountInModal(page, 2);
 
-    // Clear search
+    // Clear search (closes modal automatically)
     await todoPage.clearSearch();
+    await page.waitForTimeout(300);
+    // After clearing, modal is closed, check count in main view
     await assertTodoCount(page, 4);
 
     // Edit a todo
@@ -233,10 +239,11 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await todoPage.selectFilter('Completed');
     await assertTodoCount(page, 2);
 
-    // Search within completed
+    // Search within completed (search modal shows filtered results)
     await todoPage.fillSearch('groceries');
     await page.waitForTimeout(600);
-    await assertTodoCount(page, 1);
+    // Check count in search modal (should show only completed todos matching search)
+    await assertTodoCountInModal(page, 1);
   });
 
   test('complete flow: session persistence across page refreshes', async ({ page }) => {
@@ -369,13 +376,13 @@ test.describe('Integration Tests - Complete User Flows', () => {
     // Wait for todo to be added
     await page.waitForTimeout(1000);
 
-    // Use keyboard to focus search
+    // Use keyboard to focus search (opens modal)
     await todoPage.focusSearchWithKeyboard();
     await page.keyboard.type('Keyboard');
     await page.waitForTimeout(600);
 
-    // Should find the todo
-    await assertTodoCount(page, 1);
+    // Should find the todo in the search modal
+    await assertTodoCountInModal(page, 1);
   });
 
   test('complete flow: mobile-like interaction', async ({ page }) => {

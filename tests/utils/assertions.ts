@@ -171,3 +171,16 @@ export async function assertCompletedCount(page: Page, expectedCount: number) {
   const completedCount = match ? parseInt(match[1]) : 0;
   expect(completedCount).toBe(expectedCount);
 }
+
+/**
+ * Assert that the todo count in search modal matches expected
+ */
+export async function assertTodoCountInModal(page: Page, expectedCount: number) {
+  // Wait for modal to be visible
+  const modal = page.locator('[role="dialog"][aria-label="Search todos"]');
+  await expect(modal).toBeVisible({ timeout: 5000 });
+  
+  // Get todos from within the modal
+  const todos = modal.locator('.group.flex.items-center.gap-3.px-4.py-3.bg-white.rounded-lg');
+  await expect(todos).toHaveCount(expectedCount);
+}
