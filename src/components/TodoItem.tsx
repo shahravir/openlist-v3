@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Todo } from '../types';
-import { MAX_TODO_LENGTH, MIN_TODO_LENGTH } from '../utils/constants';
+import { MAX_TODO_LENGTH, MIN_TODO_LENGTH, NEW_ITEM_DETECTION_WINDOW_MS, ANIMATION_DURATION_MS } from '../utils/constants';
 
 interface TodoItemProps {
   todo: Todo;
@@ -16,13 +16,13 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
   const [isNew, setIsNew] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Detect if this is a newly added item (created within last 500ms)
+  // Detect if this is a newly added item (created within last NEW_ITEM_DETECTION_WINDOW_MS)
   useEffect(() => {
     const now = Date.now();
     const itemAge = now - todo.createdAt;
-    if (itemAge < 500) {
+    if (itemAge < NEW_ITEM_DETECTION_WINDOW_MS) {
       setIsNew(true);
-      const timer = setTimeout(() => setIsNew(false), 300);
+      const timer = setTimeout(() => setIsNew(false), ANIMATION_DURATION_MS);
       return () => clearTimeout(timer);
     }
   }, [todo.createdAt]);
