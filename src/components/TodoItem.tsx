@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { Todo } from '../types';
 import { MAX_TODO_LENGTH, MIN_TODO_LENGTH, NEW_ITEM_DETECTION_WINDOW_MS, ANIMATION_DURATION_MS } from '../utils/constants';
+import { highlightText } from '../utils/searchUtils';
 
 interface TodoItemProps {
   todo: Todo;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, text: string) => void;
+  searchQuery?: string;
 }
 
-export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) {
+export function TodoItem({ todo, onToggle, onDelete, onUpdate, searchQuery = '' }: TodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
   const [announcement, setAnnouncement] = useState<string>('');
@@ -174,7 +176,20 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
             : 'text-gray-800'
         } transition-all duration-200 cursor-pointer`}
       >
-        {todo.text}
+        {searchQuery ? (
+          <>
+            {highlightText(todo.text, searchQuery).map((segment, index) => (
+              <span
+                key={index}
+                className={segment.highlight ? 'bg-yellow-200 font-medium' : ''}
+              >
+                {segment.text}
+              </span>
+            ))}
+          </>
+        ) : (
+          todo.text
+        )}
       </span>
       <button
         onClick={handleStartEdit}

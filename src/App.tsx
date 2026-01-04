@@ -1,11 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FloatingActionButton } from './components/FloatingActionButton';
 import { TodoList } from './components/TodoList';
+import { SearchBar } from './components/SearchBar';
+import { FilterMenu, FilterStatus } from './components/FilterMenu';
 import { useSync } from './hooks/useSync';
 import { authService } from './services/auth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
 import { SyncStatus } from './components/SyncStatus';
+import { filterTodosBySearch, debounce } from './utils/searchUtils';
+import { SEARCH_DEBOUNCE_DELAY_MS } from './utils/constants';
 
 type AuthView = 'login' | 'register';
 
@@ -13,8 +17,20 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
   const [authView, setAuthView] = useState<AuthView>('login');
   const [isLoading, setIsLoading] = useState(true);
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const { todos, addTodo, updateTodo, deleteTodo, syncWithServer, syncStatus } = useSync();
+
+  // Debounced search with configurable delay
+  const debouncedSetSearch = useMemo(
+    () => debounce(setDebouncedSearchQuery, SEARCH_DEBOUNCE_DELAY_MS),
+    []
+  );
+
+  useEffect(() => {
+    debouncedSetSearch(searchQuery);
+  }, [searchQuery, debouncedSetSearch]);
 
   // Initial sync on mount if authenticated
   useEffect(() => {
@@ -58,18 +74,34 @@ function App() {
     updateTodo(id, { text });
   }, [updateTodo]);
 
-  // Filter and sort todos
-  const filteredTodos = showCompleted 
-    ? todos 
-    : todos.filter((t) => !t.completed);
+  // Filter and sort todos based on search and filter status
+  const filteredTodos = useMemo(() => {
+    let filtered = todos;
+
+    // Apply status filter
+    if (filterStatus === 'active') {
+      filtered = filtered.filter((t) => !t.completed);
+    } else if (filterStatus === 'completed') {
+      filtered = filtered.filter((t) => t.completed);
+    }
+
+    // Apply search filter (debounced)
+    if (debouncedSearchQuery) {
+      filtered = filtered.filter((t) => filterTodosBySearch(t.text, debouncedSearchQuery));
+    }
+
+    return filtered;
+  }, [todos, filterStatus, debouncedSearchQuery]);
   
   // Sort todos: incomplete first, then by creation date (oldest first, newest at bottom)
-  const sortedTodos = [...filteredTodos].sort((a, b) => {
-    if (a.completed !== b.completed) {
-      return a.completed ? 1 : -1;
-    }
-    return a.createdAt - b.createdAt;
-  });
+  const sortedTodos = useMemo(() => {
+    return [...filteredTodos].sort((a, b) => {
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1;
+      }
+      return a.createdAt - b.createdAt;
+    });
+  }, [filteredTodos]);
 
   const completedCount = todos.filter((t) => t.completed).length;
   const totalCount = todos.length;
@@ -110,12 +142,16 @@ function App() {
         {/* Header */}
         <header className="mb-8 sm:mb-10">
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-2">
-                OpenList
-              </h1>
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">
+                  OpenList
+                </h1>
+                {/* Sync Status - Positioned at top */}
+                <SyncStatus status={syncStatus} />
+              </div>
               {user && (
-                <p className="text-sm text-gray-500">{user.email}</p>
+                <p className="text-sm text-gray-500 mt-2">{user.email}</p>
               )}
             </div>
             <button
@@ -127,25 +163,26 @@ function App() {
           </div>
           
           {totalCount > 0 && (
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm sm:text-base text-gray-500">
+            <div className="mb-4">
+              <p className="text-sm sm:text-base text-gray-500 mb-4">
                 {completedCount} of {totalCount} completed
               </p>
-              {completedCount > 0 && (
-                <button
-                  onClick={() => setShowCompleted(!showCompleted)}
-                  className="text-sm text-primary-600 hover:text-primary-700 px-3 py-1.5 rounded-lg hover:bg-primary-50 transition-colors font-medium"
-                >
-                  {showCompleted ? 'Hide' : 'Show'} completed
-                </button>
-              )}
             </div>
           )}
 
-          {/* Sync Status */}
-          <div className="mt-2">
-            <SyncStatus status={syncStatus} />
-          </div>
+          {/* Search and Filter */}
+          {totalCount > 0 && (
+            <div className="space-y-3 mb-6">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+              <FilterMenu
+                value={filterStatus}
+                onChange={setFilterStatus}
+              />
+            </div>
+          )}
         </header>
 
         {/* Todo List */}
@@ -154,6 +191,12 @@ function App() {
           onToggle={handleToggle}
           onDelete={deleteTodo}
           onUpdate={handleUpdate}
+          searchQuery={debouncedSearchQuery}
+          emptyMessage={
+            debouncedSearchQuery || filterStatus !== 'all'
+              ? 'No todos match your search or filter.'
+              : 'No tasks yet. Tap the + button to add one.'
+          }
         />
       </div>
 
