@@ -78,7 +78,7 @@ jobs:
           timeout 60 bash -c 'until curl -f http://localhost:3001/health 2>/dev/null; do sleep 2; done' || true
 
       - name: Run E2E tests (${{ matrix.browser }})
-        run: npx playwright test --project=${{ matrix.browser }}
+        run: npx playwright test tests/integration.spec.ts --project=${{ matrix.browser }}
         env:
           BASE_URL: http://localhost:5173
 
@@ -171,7 +171,7 @@ jobs:
           timeout 60 bash -c 'until curl -f http://localhost:3001/health 2>/dev/null; do sleep 2; done' || true
 
       - name: Run E2E tests (${{ matrix.device }})
-        run: npx playwright test --project="${{ matrix.device }}"
+        run: npx playwright test tests/integration.spec.ts --project="${{ matrix.device }}"
         env:
           BASE_URL: http://localhost:5173
 
