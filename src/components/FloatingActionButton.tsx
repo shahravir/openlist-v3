@@ -62,8 +62,12 @@ export function FloatingActionButton({ onAdd }: FloatingActionButtonProps) {
       try {
         await Haptics.impact({ style: ImpactStyle.Light });
       } catch (error) {
-        // Haptic feedback not available, continue silently
-        // Error is expected on platforms without haptic support
+        // Haptic feedback not available, continue silently for users
+        // Log in non-production environments to aid debugging unexpected issues
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.error('[FloatingActionButton] Haptics.impact failed:', error);
+        }
       }
     }
     setIsExpanded(true);
