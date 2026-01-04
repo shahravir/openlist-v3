@@ -99,12 +99,39 @@ export class TodoPage extends BasePage {
     return await textElement.textContent();
   }
 
+  /**
+   * Find the index of a todo by its text content
+   * Returns -1 if not found
+   */
+  async findTodoIndexByText(text: string): Promise<number> {
+    const todos = this.getTodoItems();
+    const count = await todos.count();
+    for (let i = 0; i < count; i++) {
+      const todoText = await this.getTodoText(i);
+      if (todoText?.includes(text)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   async toggleTodo(index: number) {
     const todo = this.getTodoItems().nth(index);
     const toggleButton = todo.locator('button').first();
     await toggleButton.click();
-    // Wait for animation
-    await this.page.waitForTimeout(300);
+    // Wait for animation and reordering
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Toggle a todo by its text content (useful after reordering)
+   */
+  async toggleTodoByText(text: string) {
+    const index = await this.findTodoIndexByText(text);
+    if (index === -1) {
+      throw new Error(`Todo with text "${text}" not found`);
+    }
+    await this.toggleTodo(index);
   }
 
   async isTodoCompleted(index: number) {
@@ -112,6 +139,17 @@ export class TodoPage extends BasePage {
     const textElement = todo.locator('span').first();
     const className = await textElement.getAttribute('class');
     return className?.includes('line-through') || false;
+  }
+
+  /**
+   * Check if a todo is completed by its text content (useful after reordering)
+   */
+  async isTodoCompletedByText(text: string): Promise<boolean> {
+    const index = await this.findTodoIndexByText(text);
+    if (index === -1) {
+      throw new Error(`Todo with text "${text}" not found`);
+    }
+    return await this.isTodoCompleted(index);
   }
 
   async deleteTodo(index: number) {
@@ -158,6 +196,28 @@ export class TodoPage extends BasePage {
     await this.startEditTodo(index);
     await this.editTodoText(newText);
     await this.saveEdit();
+  }
+
+  /**
+   * Update a todo by its current text content (useful after reordering)
+   */
+  async updateTodoByText(oldText: string, newText: string) {
+    const index = await this.findTodoIndexByText(oldText);
+    if (index === -1) {
+      throw new Error(`Todo with text "${oldText}" not found`);
+    }
+    await this.updateTodo(index, newText);
+  }
+
+  /**
+   * Delete a todo by its text content (useful after reordering)
+   */
+  async deleteTodoByText(text: string) {
+    const index = await this.findTodoIndexByText(text);
+    if (index === -1) {
+      throw new Error(`Todo with text "${text}" not found`);
+    }
+    await this.deleteTodo(index);
   }
 
   // Empty state
@@ -230,13 +290,19 @@ export class TodoPage extends BasePage {
 
   // Stats
   async getCompletedCount() {
-    const statsText = await this.page.locator('p.text-sm.text-gray-500').first().textContent();
+    // The stats text is in a paragraph that contains "completed"
+    // Use a more specific selector to avoid matching the user email (which comes first)
+    // The stats paragraph is the one that contains "completed" text
+    const statsText = await this.page.locator('p.text-sm.text-gray-500:has-text("completed"), p.text-base.text-gray-500:has-text("completed")').first().textContent();
     const match = statsText?.match(/(\d+) of (\d+) completed/);
     return match ? parseInt(match[1]) : 0;
   }
 
   async getTotalCount() {
-    const statsText = await this.page.locator('p.text-sm.text-gray-500').first().textContent();
+    // The stats text is in a paragraph that contains "completed"
+    // Use a more specific selector to avoid matching the user email (which comes first)
+    // The stats paragraph is the one that contains "completed" text
+    const statsText = await this.page.locator('p.text-sm.text-gray-500:has-text("completed"), p.text-base.text-gray-500:has-text("completed")').first().textContent();
     const match = statsText?.match(/(\d+) of (\d+) completed/);
     return match ? parseInt(match[2]) : 0;
   }

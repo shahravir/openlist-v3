@@ -120,9 +120,11 @@ test.describe('Search & Filter', () => {
   test('user can filter by status - Active', async ({ page }) => {
     const todoPage = new TodoPage(page);
 
-    // Complete some todos
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(1);
+    // Complete some todos (use text-based lookup since they reorder)
+    const firstTodo = await todoPage.getTodoText(0);
+    const secondTodo = await todoPage.getTodoText(1);
+    await todoPage.toggleTodoByText(firstTodo || '');
+    await todoPage.toggleTodoByText(secondTodo || '');
 
     // Filter by Active
     await todoPage.selectFilter('Active');
@@ -134,9 +136,11 @@ test.describe('Search & Filter', () => {
   test('user can filter by status - Completed', async ({ page }) => {
     const todoPage = new TodoPage(page);
 
-    // Complete some todos
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(1);
+    // Complete some todos (use text-based lookup since they reorder)
+    const firstTodo = await todoPage.getTodoText(0);
+    const secondTodo = await todoPage.getTodoText(1);
+    await todoPage.toggleTodoByText(firstTodo || '');
+    await todoPage.toggleTodoByText(secondTodo || '');
     await page.waitForTimeout(500);
 
     // Filter by Completed
@@ -145,7 +149,7 @@ test.describe('Search & Filter', () => {
     // Should show only completed todos
     await assertTodoCount(page, 2);
 
-    // Verify they are actually completed
+    // Verify they are actually completed (after filtering, they're at indices 0 and 1)
     expect(await todoPage.isTodoCompleted(0)).toBe(true);
     expect(await todoPage.isTodoCompleted(1)).toBe(true);
   });
@@ -153,9 +157,11 @@ test.describe('Search & Filter', () => {
   test('user can filter by status - All', async ({ page }) => {
     const todoPage = new TodoPage(page);
 
-    // Complete some todos
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(1);
+    // Complete some todos (use text-based lookup since they reorder)
+    const firstTodo = await todoPage.getTodoText(0);
+    const secondTodo = await todoPage.getTodoText(1);
+    await todoPage.toggleTodoByText(firstTodo || '');
+    await todoPage.toggleTodoByText(secondTodo || '');
 
     // Filter by Completed first
     await todoPage.selectFilter('Completed');
@@ -226,9 +232,11 @@ test.describe('Search & Filter', () => {
   test('filter persists after adding new todo', async ({ page }) => {
     const todoPage = new TodoPage(page);
 
-    // Complete some todos
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(1);
+    // Complete some todos (use text-based lookup since they reorder)
+    const firstTodo = await todoPage.getTodoText(0);
+    const secondTodo = await todoPage.getTodoText(1);
+    await todoPage.toggleTodoByText(firstTodo || '');
+    await todoPage.toggleTodoByText(secondTodo || '');
 
     // Filter by Completed
     await todoPage.selectFilter('Completed');
@@ -250,8 +258,9 @@ test.describe('Search & Filter', () => {
     const initialCount = await todoPage.getTodoCount();
 
     if (initialCount > 0) {
-      // Complete a todo
-      await todoPage.toggleTodo(0);
+      // Complete a todo (use text-based lookup since it will reorder)
+      const firstTodo = await todoPage.getTodoText(0);
+      await todoPage.toggleTodoByText(firstTodo || '');
 
       // Search should still be active and show same count
       await page.waitForTimeout(300);
@@ -263,9 +272,11 @@ test.describe('Search & Filter', () => {
   test('clearing search restores filter state', async ({ page }) => {
     const todoPage = new TodoPage(page);
 
-    // Complete some todos
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(1);
+    // Complete some todos (use text-based lookup since they reorder)
+    const firstTodo = await todoPage.getTodoText(0);
+    const secondTodo = await todoPage.getTodoText(1);
+    await todoPage.toggleTodoByText(firstTodo || '');
+    await todoPage.toggleTodoByText(secondTodo || '');
 
     // Filter by Active
     await todoPage.selectFilter('Active');

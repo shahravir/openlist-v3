@@ -219,19 +219,19 @@ test.describe('Todo CRUD Operations', () => {
 
     await assertTodoCount(page, 3);
 
-    // Complete the second todo
-    await todoPage.toggleTodo(1);
-    expect(await todoPage.isTodoCompleted(1)).toBe(true);
-    expect(await todoPage.isTodoCompleted(0)).toBe(false);
-    expect(await todoPage.isTodoCompleted(2)).toBe(false);
+    // Complete the second todo (it will move to bottom after completion)
+    await todoPage.toggleTodoByText(todo2);
+    expect(await todoPage.isTodoCompletedByText(todo2)).toBe(true);
+    expect(await todoPage.isTodoCompletedByText(todo1)).toBe(false);
+    expect(await todoPage.isTodoCompletedByText(todo3)).toBe(false);
 
     // Delete the first todo
-    await todoPage.deleteTodo(0);
+    await todoPage.deleteTodoByText(todo1);
     await assertTodoCount(page, 2);
 
-    // Edit the remaining first todo (originally second)
+    // Edit the remaining first todo (todo3, since todo2 moved to bottom)
     const updatedText = generateUniqueTodoText('Updated task');
-    await todoPage.updateTodo(0, updatedText);
+    await todoPage.updateTodoByText(todo3, updatedText);
     await assertTodoExists(page, updatedText);
   });
 
@@ -239,29 +239,33 @@ test.describe('Todo CRUD Operations', () => {
     const todoPage = new TodoPage(page);
 
     // Add three todos
-    await todoPage.addTodo(generateUniqueTodoText('Task 1'));
-    await todoPage.addTodo(generateUniqueTodoText('Task 2'));
-    await todoPage.addTodo(generateUniqueTodoText('Task 3'));
+    const todo1 = generateUniqueTodoText('Task 1');
+    const todo2 = generateUniqueTodoText('Task 2');
+    const todo3 = generateUniqueTodoText('Task 3');
+
+    await todoPage.addTodo(todo1);
+    await todoPage.addTodo(todo2);
+    await todoPage.addTodo(todo3);
 
     // Initially 0 completed
     await assertCompletedCount(page, 0);
     expect(await todoPage.getTotalCount()).toBe(3);
 
-    // Complete one
-    await todoPage.toggleTodo(0);
+    // Complete one (it moves to bottom)
+    await todoPage.toggleTodoByText(todo1);
     await assertCompletedCount(page, 1);
 
-    // Complete another
-    await todoPage.toggleTodo(1);
+    // Complete another (it moves to bottom)
+    await todoPage.toggleTodoByText(todo2);
     await assertCompletedCount(page, 2);
 
-    // Uncomplete one
-    await todoPage.toggleTodo(0);
+    // Uncomplete one (it moves back to top)
+    await todoPage.toggleTodoByText(todo1);
     await assertCompletedCount(page, 1);
 
     // Complete all
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(2);
+    await todoPage.toggleTodoByText(todo1);
+    await todoPage.toggleTodoByText(todo3);
     await assertCompletedCount(page, 3);
   });
 

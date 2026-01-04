@@ -97,9 +97,12 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await todoPage.addTodo(generateUniqueTodoText('New task 2'));
     await assertTodoCount(page, 3);
 
-    // Step 5: Complete some todos
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(1);
+    // Step 5: Complete some todos (use text-based lookup since they reorder)
+    const initialTodoText = await todoPage.getTodoText(0);
+    const newTask1Text = await todoPage.getTodoText(1);
+    
+    await todoPage.toggleTodoByText(initialTodoText || '');
+    await todoPage.toggleTodoByText(newTask1Text || '');
 
     // Step 6: Wait for sync
     await page.waitForTimeout(2000);
@@ -126,9 +129,9 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await todoPage.addTodo(todo3);
     await assertTodoCount(page, 3);
 
-    // Step 2: Complete some todos
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(2);
+    // Step 2: Complete some todos (use text-based lookup since they reorder)
+    await todoPage.toggleTodoByText(todo1);
+    await todoPage.toggleTodoByText(todo3);
     await page.waitForTimeout(500);
 
     // Verify completed count
@@ -162,20 +165,24 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await setupAuthenticatedSession(page, testUser);
 
     // Rapid operations
-    await todoPage.addTodo(generateUniqueTodoText('Task 1'));
-    await todoPage.addTodo(generateUniqueTodoText('Task 2'));
-    await todoPage.addTodo(generateUniqueTodoText('Task 3'));
+    const task1 = generateUniqueTodoText('Task 1');
+    const task2 = generateUniqueTodoText('Task 2');
+    const task3 = generateUniqueTodoText('Task 3');
+    
+    await todoPage.addTodo(task1);
+    await todoPage.addTodo(task2);
+    await todoPage.addTodo(task3);
     await assertTodoCount(page, 3);
 
-    // Complete
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(1);
+    // Complete (they move to bottom after completion)
+    await todoPage.toggleTodoByText(task1);
+    await todoPage.toggleTodoByText(task2);
 
-    // Edit
-    await todoPage.updateTodo(2, generateUniqueTodoText('Updated task'));
+    // Edit the remaining incomplete todo (task3)
+    await todoPage.updateTodoByText(task3, generateUniqueTodoText('Updated task'));
 
-    // Delete
-    await todoPage.deleteTodo(0);
+    // Delete one of the completed todos (task1, which is now at bottom)
+    await todoPage.deleteTodoByText(task1);
     await assertTodoCount(page, 2);
 
     // Add more
@@ -214,11 +221,13 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await assertTodoCount(page, 4);
 
     // Edit a todo
-    await todoPage.updateTodo(0, 'Buy groceries');
+    const todoToEdit = await todoPage.getTodoText(0);
+    await todoPage.updateTodoByText(todoToEdit || '', 'Buy groceries');
 
-    // Complete some todos
-    await todoPage.toggleTodo(0);
-    await todoPage.toggleTodo(2);
+    // Complete some todos (use text-based lookup since they reorder)
+    await todoPage.toggleTodoByText('Buy groceries');
+    const todoAt2 = await todoPage.getTodoText(2);
+    await todoPage.toggleTodoByText(todoAt2 || '');
 
     // Filter by completed
     await todoPage.selectFilter('Completed');
@@ -243,8 +252,8 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await todoPage.addTodo(todo1);
     await todoPage.addTodo(todo2);
 
-    // Complete one
-    await todoPage.toggleTodo(0);
+    // Complete one (it moves to bottom after completion)
+    await todoPage.toggleTodoByText(todo1);
 
     // Wait for sync
     await page.waitForTimeout(2000);
@@ -257,9 +266,9 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await assertUserIsAuthenticated(page);
     await assertTodoCount(page, 2);
 
-    // Verify completion status persisted
-    expect(await todoPage.isTodoCompleted(0)).toBe(true);
-    expect(await todoPage.isTodoCompleted(1)).toBe(false);
+    // Verify completion status persisted (todo1 moved to bottom, todo2 is at top)
+    expect(await todoPage.isTodoCompletedByText(todo1)).toBe(true);
+    expect(await todoPage.isTodoCompletedByText(todo2)).toBe(false);
   });
 
   test('complete flow: multiple users can maintain separate data', async ({ page, context }) => {
@@ -380,18 +389,21 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await setupAuthenticatedSession(page, testUser);
 
     // Add todos with touch interactions
-    await todoPage.addTodo(generateUniqueTodoText('Mobile task 1'));
-    await todoPage.addTodo(generateUniqueTodoText('Mobile task 2'));
+    const task1 = generateUniqueTodoText('Mobile task 1');
+    const task2 = generateUniqueTodoText('Mobile task 2');
+    
+    await todoPage.addTodo(task1);
+    await todoPage.addTodo(task2);
 
-    // Tap to complete
-    await todoPage.toggleTodo(0);
+    // Tap to complete (it moves to bottom after completion)
+    await todoPage.toggleTodoByText(task1);
 
-    // Tap to delete
-    await todoPage.deleteTodo(1);
+    // Tap to delete the incomplete one (task2, which is now at index 0)
+    await todoPage.deleteTodoByText(task2);
 
-    // Verify final state
+    // Verify final state - only task1 remains, and it should be completed
     await assertTodoCount(page, 1);
-    expect(await todoPage.isTodoCompleted(0)).toBe(true);
+    expect(await todoPage.isTodoCompletedByText(task1)).toBe(true);
 
     // Logout
     await todoPage.clickLogout();
