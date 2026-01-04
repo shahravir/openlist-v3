@@ -29,7 +29,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
       
       // Cleanup function to remove announcement
       return () => {
-        if (document.body.contains(announcement)) {
+        if (announcement && document.body.contains(announcement)) {
           document.body.removeChild(announcement);
         }
       };
@@ -43,7 +43,8 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate }: TodoItemProps) 
 
   const handleSave = () => {
     const trimmedText = editText.trim();
-    if (trimmedText && trimmedText !== todo.text && trimmedText.length <= MAX_TODO_LENGTH) {
+    // Validate: must have text and must be different from original and within length limits
+    if (trimmedText.length > 0 && trimmedText !== todo.text && trimmedText.length <= MAX_TODO_LENGTH) {
       onUpdate(todo.id, trimmedText);
     }
     setIsEditing(false);
