@@ -16,6 +16,44 @@ This roadmap outlines features needed to make OpenList production-ready. Feature
 
 ---
 
+## Responsive Design Requirements
+
+**⚠️ CRITICAL: All features must be responsive and work seamlessly across all devices and screen sizes.**
+
+### Device Support Matrix
+- **Mobile Phones:** 320px - 767px (portrait & landscape)
+- **Tablets:** 768px - 1023px (portrait & landscape)
+- **Small Laptops:** 1024px - 1439px
+- **Desktop:** 1440px+ (including ultrawide monitors)
+- **Touch Devices:** iOS, Android (Capacitor apps)
+- **Desktop Browsers:** Chrome, Firefox, Safari, Edge
+
+### Responsive Design Principles
+1. **Mobile-First Approach:** Design for smallest screens first, then enhance for larger screens
+2. **Touch Targets:** Minimum 44x44px for all interactive elements on mobile
+3. **Flexible Layouts:** Use CSS Grid and Flexbox for adaptive layouts
+4. **Responsive Typography:** Fluid typography that scales appropriately
+5. **Breakpoint Strategy:** Use Tailwind's responsive breakpoints (sm, md, lg, xl, 2xl)
+6. **Touch-Friendly:** Larger buttons, spacing, and gestures on mobile
+7. **Keyboard Navigation:** Full keyboard support for desktop users
+8. **Progressive Enhancement:** Core functionality works everywhere, enhanced features on capable devices
+9. **Performance:** Optimize for slower mobile connections and devices
+10. **Testing:** Test on real devices across all supported screen sizes
+
+### Implementation Checklist for Each Feature
+- [ ] Works on mobile (320px+)
+- [ ] Works on tablet (768px+)
+- [ ] Works on desktop (1024px+)
+- [ ] Touch-friendly interactions
+- [ ] Keyboard accessible
+- [ ] Proper spacing and sizing at all breakpoints
+- [ ] No horizontal scrolling
+- [ ] Text readable without zooming
+- [ ] Interactive elements easily tappable
+- [ ] Tested on iOS Safari, Android Chrome, Desktop browsers
+
+---
+
 ## Phase 1: Core Functionality Gaps (High Priority)
 
 These are essential features that users expect from a todo app.
@@ -27,6 +65,7 @@ These are essential features that users expect from a todo app.
 - Double-click or edit button to edit todo text inline
 - Save on Enter, cancel on Escape
 - Update `updatedAt` timestamp on edit
+- **Responsive:** Edit button visible on mobile (double-click not ideal for touch), larger touch target (44x44px), full-width input on mobile, responsive font size
 
 ### 1.2 Search & Filter
 **Value:** Essential for users with many todos
@@ -36,6 +75,7 @@ These are essential features that users expect from a todo app.
 - Filter by status (all/active/completed)
 - Real-time search as user types
 - Highlight matching text in results
+- **Responsive:** Full-width search on mobile, collapsible filter menu on small screens, touch-friendly filter buttons, keyboard accessible (Ctrl/Cmd+K), responsive dropdown menus, mobile keyboard optimization
 
 ### 1.3 Reorder Todos (Drag & Drop)
 **Value:** Users want to prioritize by order
@@ -45,6 +85,7 @@ These are essential features that users expect from a todo app.
 - Persist order in database (add `order` field)
 - Sync order across devices
 - Touch-friendly drag handles for mobile
+- **Responsive:** Large drag handles on mobile (60x60px), visual feedback during drag, alternative reorder buttons for accessibility, works with touch and mouse, smooth animations on all devices, haptic feedback on mobile drag start
 
 ### 1.4 Undo/Redo
 **Value:** Prevents accidental data loss
@@ -54,6 +95,7 @@ These are essential features that users expect from a todo app.
 - Toast notification with undo button
 - Store last 10 actions in memory
 - Clear on page refresh (acceptable trade-off)
+- **Responsive:** Toast positioned appropriately on all screen sizes (bottom on mobile, top-right on desktop), large touch target for undo button, swipe-to-dismiss on mobile, keyboard accessible, responsive toast sizing
 
 ---
 
@@ -70,6 +112,7 @@ Features that help users organize and manage their tasks better.
 - Visual indicators (overdue, today, upcoming)
 - Filter by due date
 - Sort by due date
+- **Responsive:** Native date picker on mobile (iOS/Android), responsive calendar picker on desktop, touch-friendly date selection, compact date display on mobile, full date on larger screens, visual indicators scale appropriately
 
 ### 2.2 Priorities
 **Value:** Helps users focus on important tasks
@@ -79,6 +122,7 @@ Features that help users organize and manage their tasks better.
 - Visual indicators (colors/icons)
 - Filter and sort by priority
 - Quick priority toggle in todo item
+- **Responsive:** Large priority buttons on mobile, color + icon for clarity on small screens, dropdown menu on mobile vs inline buttons on desktop, touch-friendly priority selector, accessible color contrast
 
 ### 2.3 Categories/Tags
 **Value:** Organize todos by context (work, personal, shopping)
@@ -89,6 +133,7 @@ Features that help users organize and manage their tasks better.
 - Filter by tag
 - Tag color coding
 - Tag management (rename, delete, merge)
+- **Responsive:** Chip-style tags that wrap on mobile, full-width tag input on mobile, responsive tag picker modal, touch-friendly tag selection, collapsible tag list on small screens, keyboard accessible autocomplete
 
 ### 2.4 Bulk Operations
 **Value:** Efficient for managing multiple todos
@@ -99,6 +144,7 @@ Features that help users organize and manage their tasks better.
 - Bulk delete
 - Bulk tag assignment
 - Bulk priority change
+- **Responsive:** Large checkboxes on mobile (44x44px), sticky action bar on mobile during selection, bottom sheet for bulk actions on mobile, full toolbar on desktop, touch-friendly select all button, responsive action buttons
 
 ---
 
@@ -117,6 +163,7 @@ Improvements that make the app more pleasant and efficient to use.
 - `E` - Edit selected todo
 - `Esc` - Cancel/close dialogs
 - Show shortcuts in help menu
+- **Responsive:** Keyboard shortcuts work on desktop/tablet with keyboards, visual shortcuts menu accessible on all devices, alternative touch gestures for mobile where applicable, help overlay responsive on all screen sizes
 
 ### 3.2 Swipe Actions (Mobile)
 **Value:** Native mobile feel
@@ -136,6 +183,7 @@ Improvements that make the app more pleasant and efficient to use.
 - Empty state for filtered views
 - Quick action suggestions
 - Illustration/icon
+- **Responsive:** Centered layout on all screens, responsive illustration sizing, touch-friendly action buttons, readable text at all sizes, appropriate spacing on mobile vs desktop
 
 ### 3.4 Loading States & Skeletons
 **Value:** Perceived performance
@@ -145,6 +193,7 @@ Improvements that make the app more pleasant and efficient to use.
 - Optimistic UI updates
 - Loading indicators for async operations
 - Smooth transitions
+- **Responsive:** Skeleton loaders match actual content layout on all screen sizes, loading spinners appropriately sized, smooth animations on all devices, optimized for mobile performance
 
 ### 3.5 Toast Notifications
 **Value:** User feedback for actions
@@ -155,6 +204,7 @@ Improvements that make the app more pleasant and efficient to use.
 - Manual dismiss option
 - Stack multiple toasts
 - Undo action in toast
+- **Responsive:** Bottom positioning on mobile, top-right on desktop, full-width on mobile (< 640px), max-width on larger screens, touch-friendly dismiss button, swipe-to-dismiss on mobile, responsive text sizing
 
 ---
 
@@ -171,6 +221,7 @@ Features for data control and portability.
 - Export to Markdown
 - Include metadata (dates, priorities, tags)
 - Download button in settings
+- **Responsive:** Full-width export buttons on mobile, responsive settings page layout, format selection works on all screen sizes, touch-friendly file format picker, mobile-friendly download flow
 
 ### 4.2 Import Data
 **Value:** Migrate from other apps
@@ -181,6 +232,7 @@ Features for data control and portability.
 - Import from Markdown
 - Conflict resolution (merge vs replace)
 - Preview before import
+- **Responsive:** Full-width file input on mobile, responsive preview table/list, touch-friendly conflict resolution buttons, mobile-optimized file picker, scrollable preview on small screens
 
 ### 4.3 Archive Completed Todos
 **Value:** Keep list clean without losing data
@@ -201,6 +253,7 @@ Features for data control and portability.
 - Most productive day/time
 - Streak counter
 - Simple charts/graphs
+- **Responsive:** Responsive chart library (recharts/chart.js), stacked cards on mobile vs grid on desktop, touch-friendly date range picker, scrollable charts on mobile, readable text at all sizes, mobile-optimized data visualization
 
 ---
 
@@ -217,6 +270,7 @@ Essential for production-ready authentication.
 - Reset password page
 - Token expiration (1 hour)
 - Rate limiting on requests
+- **Responsive:** Full-width form on mobile, centered on desktop, touch-friendly input fields, responsive button sizing, mobile-optimized email input, readable instructions on all screens
 
 ### 5.2 Email Verification
 **Value:** Ensure valid emails and reduce spam
@@ -226,6 +280,7 @@ Essential for production-ready authentication.
 - Verify email before full access
 - Resend verification email
 - Reminder to verify
+- **Responsive:** Responsive verification banner/notification, full-width buttons on mobile, touch-friendly resend button, mobile-optimized email instructions, readable verification messages
 
 ### 5.3 Session Management
 **Value:** Security and UX
@@ -244,6 +299,7 @@ Essential for production-ready authentication.
 - Real-time password strength meter
 - Requirements checklist
 - Visual feedback (weak/medium/strong)
+- **Responsive:** Full-width meter on mobile, responsive checklist layout, touch-friendly, readable text, color + text for accessibility, works on all screen sizes
 
 ---
 
@@ -260,6 +316,7 @@ Let users customize their experience.
 - Auto-archive settings
 - Sync frequency settings
 - Notification preferences
+- **Responsive:** Mobile-friendly settings layout (stacked on mobile, grid on desktop), full-width form controls, touch-friendly toggles and selects, responsive navigation, scrollable settings sections on mobile
 
 ### 6.2 Dark Mode
 **Value:** Eye comfort and modern UX
@@ -270,6 +327,7 @@ Let users customize their experience.
 - Manual toggle
 - Smooth theme transitions
 - Persist preference
+- **Responsive:** Works seamlessly on all devices, touch-friendly theme toggle, responsive toggle placement (header on mobile, settings on desktop), smooth transitions on all screen sizes, proper contrast on all devices
 
 ### 6.3 Notification Preferences
 **Value:** Control interruptions
@@ -296,6 +354,7 @@ Features that differentiate the app and add significant value.
 - Next occurrence preview
 - Skip option
 - Edit series vs single instance
+- **Responsive:** Full-width repeat pattern selector on mobile, touch-friendly frequency buttons, responsive preview display, mobile-optimized custom pattern editor, readable options on all screens
 
 ### 7.2 Subtasks
 **Value:** Break down complex tasks
@@ -306,6 +365,7 @@ Features that differentiate the app and add significant value.
 - Expand/collapse subtasks
 - Indent visual hierarchy
 - Max depth: 2 levels (keep it simple)
+- **Responsive:** Touch-friendly expand/collapse buttons, appropriate indentation on all screen sizes, readable nested text, mobile-optimized subtask input, responsive hierarchy indicators
 
 ### 7.3 Notes/Description
 **Value:** Add context to tasks
@@ -315,6 +375,7 @@ Features that differentiate the app and add significant value.
 - Expandable in todo item
 - Markdown support (optional)
 - Character limit (500 chars)
+- **Responsive:** Full-width textarea on mobile, touch-friendly expand/collapse, readable markdown preview, responsive character counter, mobile keyboard optimization
 
 ### 7.4 Attachments
 **Value:** Link files/images to todos
@@ -325,6 +386,7 @@ Features that differentiate the app and add significant value.
 - Preview images
 - Download files
 - Size limits and validation
+- **Responsive:** Full-width file input on mobile, responsive image previews (grid on desktop, list on mobile), touch-friendly upload button, mobile camera integration, responsive file list, thumbnail sizing for all screens
 
 ---
 
@@ -372,6 +434,7 @@ Make the app accessible and polished.
 - Skip option
 - Progress indicator
 - Show again option
+- **Responsive:** Responsive tour overlay, touch-friendly navigation buttons, mobile-optimized tooltips, readable instructions on all screens, appropriate sizing for different devices, swipe navigation on mobile
 
 ### 8.5 Help & Documentation
 **Value:** Self-service support
@@ -382,6 +445,7 @@ Make the app accessible and polished.
 - FAQ section
 - Feature explanations
 - Contact/support link
+- **Responsive:** Responsive help modal/drawer, mobile-friendly navigation, readable documentation, touch-friendly links, collapsible FAQ sections, responsive keyboard shortcuts display
 
 ---
 
@@ -486,10 +550,14 @@ Understand usage and improve the product.
 ## Notes
 
 - **Keep features small:** Each feature should be independently valuable and completable in 1-3 days
+- **Responsive by default:** Every feature MUST work on mobile, tablet, and desktop. No exceptions.
+- **Mobile-first:** Design and implement for mobile first, then enhance for larger screens
+- **Touch-friendly:** All interactive elements must be at least 44x44px on mobile
 - **User feedback:** Prioritize based on actual user needs after initial launch
 - **Technical debt:** Balance new features with code quality improvements
-- **Testing:** Add tests as you build features (unit, integration, E2E)
+- **Testing:** Add tests as you build features (unit, integration, E2E). Test on real devices.
 - **Documentation:** Update README and add inline docs for complex features
+- **Breakpoint testing:** Test each feature at key breakpoints: 320px, 768px, 1024px, 1440px
 
 ---
 

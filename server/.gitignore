@@ -1,5 +1,21 @@
-node_modules
-dist
-.env
-*.log
+# Server-specific ignores
+# Note: Most ignores are handled by root .gitignore
+# This file only contains server-specific patterns
 
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+logs/
+
+# Database files (if any local test databases)
+*.db
+*.sqlite
+*.sqlite3

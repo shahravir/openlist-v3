@@ -1,5 +1,29 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,47 +31,152 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# TypeScript
+*.tsbuildinfo
+*.d.ts.map
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+.cache/
+.temp/
+.tmp/
+
+# Server-specific
+server/dist/
+server/.env
+server/.env.local
+server/*.log
+
+# Mobile - iOS
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+*.xcworkspace
+!default.xcworkspace
+*.xcuserstate
+*.xcuserdatad
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+Pods/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcshareddata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Mobile - Android
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release/
+android/app/debug/
+android/local.properties
+android/.idea/
+android/*.iml
+android/.externalNativeBuild/
+android/.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+.gradle/
+local.properties
+*.keystore
+!debug.keystore
+proguard/
+*.hprof
+captures/
+.externalNativeBuild
+.cxx/
+
+# Capacitor
+.capacitor/
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Package manager lock files (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Optional: Keep mobile native projects but ignore build artifacts
+# Uncomment if you want to commit ios/ and android/ folders but ignore builds
+# ios/App/build/
+# android/app/build/
+
+# Optional: Ignore entire mobile folders (uncomment if you don't want to commit native code)
+# ios/
+# android/
+
+# Misc
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Mobile build artifacts
-# Note: Some teams commit ios/ and android/ folders, others don't
-# Uncomment the following lines if you want to exclude native projects:
-# ios/
-# android/
-*.xcworkspace
-!default.xcworkspace
-xcuserdata/
-*.xcuserstate
-*.xcuserdatad
-.DS_Store
-*.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
-*.apk
-*.aab
-*.keystore
-!debug.keystore
-local.properties
-.gradle/
-build/
-*.iml
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/dictionaries
-.idea/shelf
-
