@@ -3,6 +3,7 @@ import { FloatingActionButton } from './components/FloatingActionButton';
 import { TodoList } from './components/TodoList';
 import { FilterMenu, FilterStatus } from './components/FilterMenu';
 import { Sidebar } from './components/Sidebar';
+import { SearchModal } from './components/SearchModal';
 import { BurgerMenuButton } from './components/BurgerMenuButton';
 import { Backdrop } from './components/Backdrop';
 import { useSync } from './hooks/useSync';
@@ -23,6 +24,7 @@ function App() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const { todos, addTodo, updateTodo, deleteTodo, syncWithServer, syncStatus } = useSync();
 
   // Debounced search with configurable delay
@@ -66,6 +68,7 @@ function App() {
     setIsAuthenticated(false);
     setAuthView('login'); // Reset to login view after logout
     setIsSidebarOpen(false); // Close sidebar on logout
+    setIsSearchModalOpen(false); // Close search modal on logout
   };
 
   const toggleSidebar = () => {
@@ -76,12 +79,28 @@ function App() {
     setIsSidebarOpen(false);
   };
 
-  // Keyboard shortcut: Ctrl/Cmd + B to toggle sidebar
+  const openSearchModal = () => {
+    setIsSearchModalOpen(true);
+  };
+
+  const closeSearchModal = () => {
+    setIsSearchModalOpen(false);
+  };
+
+  // Keyboard shortcut: Ctrl/Cmd + B to toggle sidebar (mobile/tablet only)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
         e.preventDefault();
-        toggleSidebar();
+        // Only toggle on mobile/tablet, not desktop
+        if (window.innerWidth < 1024) {
+          toggleSidebar();
+        }
+      }
+      // Ctrl/Cmd + K to open search modal
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        openSearchModal();
       }
     };
 
@@ -89,8 +108,10 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Click outside detection for desktop
+  // Click outside detection for desktop (only when not persistent)
   useEffect(() => {
+    // On desktop, sidebar is persistent, so no click-outside needed
+    if (window.innerWidth >= 1024) return;
     if (!isSidebarOpen) return;
 
     const handleClickOutside = (e: MouseEvent) => {
@@ -194,77 +215,90 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Sidebar */}
+      {/* Sidebar - Persistent on desktop, collapsible on mobile/tablet */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
+        onOpenSearch={openSearchModal}
+        isPersistent={true}
+      />
+
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={isSearchModalOpen}
+        onClose={closeSearchModal}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
 
-      {/* Backdrop */}
-      <Backdrop isVisible={isSidebarOpen} onClick={closeSidebar} />
+      {/* Backdrop - Only for mobile/tablet */}
+      <Backdrop isVisible={isSidebarOpen && window.innerWidth < 1024} onClick={closeSidebar} />
 
-      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 md:py-12 pb-24">
-        {/* Header */}
-        <header className="mb-8 sm:mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 sm:gap-3 flex-1">
-              {/* Burger Menu Button */}
-              <BurgerMenuButton onClick={toggleSidebar} isOpen={isSidebarOpen} />
-              
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">
-                  OpenList
-                </h1>
-                {/* Sync Status - Positioned at top */}
-                <SyncStatus status={syncStatus} />
+      {/* Main content with left margin on desktop to account for persistent sidebar */}
+      <div className="lg:ml-80 transition-all duration-300">
+        <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 md:py-12 pb-24 pt-safe">
+          {/* Header */}
+          <header className="mb-8 sm:mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1">
+                {/* Burger Menu Button - Only visible on mobile/tablet */}
+                <div className="lg:hidden">
+                  <BurgerMenuButton onClick={toggleSidebar} isOpen={isSidebarOpen} />
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">
+                    OpenList
+                  </h1>
+                  {/* Sync Status - Positioned at top */}
+                  <SyncStatus status={syncStatus} />
+                </div>
               </div>
+              <button
+                onClick={handleLogout}
+                className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Logout
+              </button>
             </div>
-            <button
-              onClick={handleLogout}
-              className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-          
-          {user && (
-            <p className="text-sm text-gray-500 mt-2 ml-14 sm:ml-[60px]">{user.email}</p>
-          )}
-          
-          {totalCount > 0 && (
-            <div className="mb-4 ml-14 sm:ml-[60px]">
-              <p className="text-sm sm:text-base text-gray-500 mb-4">
-                {completedCount} of {totalCount} completed
-              </p>
-            </div>
-          )}
+            
+            {user && (
+              <p className="text-sm text-gray-500 mt-2 lg:ml-0 ml-14 sm:ml-[60px]">{user.email}</p>
+            )}
+            
+            {totalCount > 0 && (
+              <div className="mb-4 lg:ml-0 ml-14 sm:ml-[60px]">
+                <p className="text-sm sm:text-base text-gray-500 mb-4">
+                  {completedCount} of {totalCount} completed
+                </p>
+              </div>
+            )}
 
-          {/* Filter - Search removed from main view */}
-          {totalCount > 0 && (
-            <div className="space-y-3 mb-6 ml-14 sm:ml-[60px]">
-              <FilterMenu
-                value={filterStatus}
-                onChange={setFilterStatus}
-              />
-            </div>
-          )}
-        </header>
+            {/* Filter - Search removed from main view */}
+            {totalCount > 0 && (
+              <div className="space-y-3 mb-6 lg:ml-0 ml-14 sm:ml-[60px]">
+                <FilterMenu
+                  value={filterStatus}
+                  onChange={setFilterStatus}
+                />
+              </div>
+            )}
+          </header>
 
-        {/* Todo List */}
-        <TodoList
-          todos={sortedTodos}
-          onToggle={handleToggle}
-          onDelete={deleteTodo}
-          onUpdate={handleUpdate}
-          searchQuery={debouncedSearchQuery}
-          emptyMessage={
-            debouncedSearchQuery || filterStatus !== 'all'
-              ? 'No todos match your search or filter.'
-              : 'No tasks yet. Tap the + button to add one.'
-          }
-        />
+          {/* Todo List */}
+          <TodoList
+            todos={sortedTodos}
+            onToggle={handleToggle}
+            onDelete={deleteTodo}
+            onUpdate={handleUpdate}
+            searchQuery={debouncedSearchQuery}
+            emptyMessage={
+              debouncedSearchQuery || filterStatus !== 'all'
+                ? 'No todos match your search or filter.'
+                : 'No tasks yet. Tap the + button to add one.'
+            }
+          />
+        </div>
       </div>
 
       {/* Floating Action Button */}

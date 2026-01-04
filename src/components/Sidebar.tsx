@@ -1,14 +1,13 @@
 import { useEffect, useRef } from 'react';
-import { SearchBar } from './SearchBar';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
+  onOpenSearch: () => void;
+  isPersistent?: boolean; // For desktop persistent sidebar
 }
 
-export function Sidebar({ isOpen, onClose, searchQuery, onSearchChange }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onOpenSearch, isPersistent = false }: SidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -63,24 +62,51 @@ export function Sidebar({ isOpen, onClose, searchQuery, onSearchChange }: Sideba
         fixed top-0 left-0 h-full w-80 max-w-[90vw]
         bg-white shadow-2xl z-50
         transform transition-transform duration-300 ease-out
+        ${isPersistent ? 'lg:translate-x-0' : ''}
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        pt-safe pb-safe
       `}
       role="navigation"
       aria-label="Navigation menu"
-      aria-hidden={!isOpen}
+      aria-hidden={!isOpen && !isPersistent}
     >
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Menu</h2>
+          {/* Only show close button on mobile/tablet */}
+          {!isPersistent && (
+            <button
+              ref={closeButtonRef}
+              onClick={onClose}
+              className="lg:hidden w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400"
+              aria-label="Close navigation menu"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Search Button */}
           <button
-            ref={closeButtonRef}
-            onClick={onClose}
-            className="w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400"
-            aria-label="Close navigation menu"
+            onClick={onOpenSearch}
+            className="w-full flex items-center gap-3 px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation"
+            aria-label="Open search"
           >
             <svg
-              className="w-6 h-6"
+              className="w-5 h-5 text-gray-600"
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -88,22 +114,11 @@ export function Sidebar({ isOpen, onClose, searchQuery, onSearchChange }: Sideba
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path d="M6 18L18 6M6 6l12 12" />
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
+            <span className="text-gray-700 font-medium">Search</span>
+            <span className="ml-auto text-xs text-gray-500">Ctrl+K</span>
           </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {/* Search Section */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Search</h3>
-            <SearchBar
-              value={searchQuery}
-              onChange={onSearchChange}
-              placeholder="Search todos..."
-            />
-          </div>
 
           {/* Future sections can go here */}
           {/* Filters, Settings, Help, etc. */}

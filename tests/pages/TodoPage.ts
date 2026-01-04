@@ -264,13 +264,25 @@ export class TodoPage extends BasePage {
 
   // Search
   async fillSearch(query: string) {
-    // Open sidebar first if not open
-    const sidebarOpen = await this.isSidebarOpen();
-    if (!sidebarOpen) {
-      await this.openSidebar();
+    // Open search modal by clicking the search button in sidebar
+    // On mobile, need to open sidebar first
+    const viewportWidth = this.page.viewportSize()?.width || 1920;
+    if (viewportWidth < 1024) {
+      const sidebarOpen = await this.isSidebarOpen();
+      if (!sidebarOpen) {
+        await this.openSidebar();
+      }
     }
 
-    // Search input is now in the sidebar
+    // Click the search button to open modal
+    const searchButton = this.page.locator('button[aria-label="Open search"]');
+    await searchButton.waitFor({ state: 'visible', timeout: 5000 });
+    await searchButton.click();
+    
+    // Wait for search modal to open
+    await this.page.waitForTimeout(300);
+
+    // Search input is now in the modal
     const searchInput = this.page.locator('input[aria-label="Search todos"]');
     await searchInput.waitFor({ state: 'visible', timeout: 5000 });
     await searchInput.fill(query);
@@ -279,10 +291,20 @@ export class TodoPage extends BasePage {
   }
 
   async clearSearch() {
-    // Open sidebar first if not open
-    const sidebarOpen = await this.isSidebarOpen();
-    if (!sidebarOpen) {
-      await this.openSidebar();
+    // Open search modal first
+    const viewportWidth = this.page.viewportSize()?.width || 1920;
+    if (viewportWidth < 1024) {
+      const sidebarOpen = await this.isSidebarOpen();
+      if (!sidebarOpen) {
+        await this.openSidebar();
+      }
+    }
+
+    // Click the search button to open modal
+    const searchButton = this.page.locator('button[aria-label="Open search"]');
+    if (await searchButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await searchButton.click();
+      await this.page.waitForTimeout(300);
     }
 
     const clearButton = this.page.locator('button[aria-label="Clear search"]');
@@ -292,20 +314,7 @@ export class TodoPage extends BasePage {
   }
 
   async focusSearchWithKeyboard() {
-    // Open sidebar first if not open
-    const sidebarOpen = await this.isSidebarOpen();
-    if (!sidebarOpen) {
-      await this.openSidebar();
-    }
-
-    // Search input is in the sidebar
-    const searchInput = this.page.locator('input[aria-label="Search todos"]');
-    const isVisible = await searchInput.isVisible({ timeout: 2000 }).catch(() => false);
-    if (!isVisible) {
-      throw new Error('Search bar is not visible in sidebar. Sidebar may not be open.');
-    }
-    
-    // Press Ctrl/Cmd+K
+    // Use Ctrl/Cmd+K to open search modal
     const isMac = process.platform === 'darwin';
     if (isMac) {
       await this.page.keyboard.press('Meta+k');
@@ -313,8 +322,15 @@ export class TodoPage extends BasePage {
       await this.page.keyboard.press('Control+k');
     }
     
-    // Wait for focus
-    await this.page.waitForTimeout(200);
+    // Wait for modal to open
+    await this.page.waitForTimeout(300);
+    
+    // Search input should be focused in the modal
+    const searchInput = this.page.locator('input[aria-label="Search todos"]');
+    const isVisible = await searchInput.isVisible({ timeout: 2000 }).catch(() => false);
+    if (!isVisible) {
+      throw new Error('Search modal did not open with keyboard shortcut.');
+    }
   }
   
   async isSearchVisible() {
