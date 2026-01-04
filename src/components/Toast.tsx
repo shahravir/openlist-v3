@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { TOAST_DURATION_MS, TOAST_ANIMATION_DURATION_MS } from '../utils/constants';
 
 interface ToastProps {
@@ -25,6 +25,13 @@ export function Toast({
   // Minimum swipe distance (in px) to trigger dismiss
   const minSwipeDistance = 50;
 
+  const handleDismiss = useCallback(() => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onDismiss();
+    }, TOAST_ANIMATION_DURATION_MS); // Wait for animation to complete
+  }, [onDismiss]);
+
   useEffect(() => {
     // Trigger animation on mount
     setIsVisible(true);
@@ -39,14 +46,7 @@ export function Toast({
         clearTimeout(timerRef.current);
       }
     };
-  }, [duration]);
-
-  const handleDismiss = () => {
-    setIsVisible(false);
-    setTimeout(() => {
-      onDismiss();
-    }, TOAST_ANIMATION_DURATION_MS); // Wait for animation to complete
-  };
+  }, [duration, handleDismiss]);
 
   const handleAction = () => {
     if (onAction) {

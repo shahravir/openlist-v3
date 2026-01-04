@@ -585,13 +585,15 @@ export function useSync() {
   }, [setTodos, isOnline, syncWithServer, wsConnected]);
 
   const restoreTodo = useCallback((todo: Todo) => {
-    // Restore todo with all its original properties
-    setTodos((prev) => [todo, ...prev]);
-    
     // Send via WebSocket if connected, otherwise use HTTP fallback
     if (wsConnected && wsService.isConnected()) {
       logSync('SYNC', 'Restoring via WebSocket', { operation: 'restore', todoId: todo.id });
       syncStatsRef.current.websocket++;
+      
+      // Update state immediately
+      setTodos((prev) => [todo, ...prev]);
+      
+      // Send command to server
       wsService.sendCommand({
         type: 'todo:create',
         payload: {

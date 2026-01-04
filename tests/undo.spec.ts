@@ -260,7 +260,11 @@ test.describe('Undo/Redo Functionality', () => {
 
   test('toast positioning is responsive on mobile', async ({ page }) => {
     // Set mobile viewport
-    await page.setViewportSize({ width: 375, height: 667 });
+    const MOBILE_WIDTH = 375;
+    const MOBILE_HEIGHT = 667;
+    const MOBILE_BOTTOM_THRESHOLD = MOBILE_HEIGHT * 0.75; // Toast should be in bottom 25% of viewport
+    
+    await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
 
     const todoPage = new TodoPage(page);
     const todoText = generateUniqueTodoText('Task to delete');
@@ -280,13 +284,18 @@ test.describe('Undo/Redo Functionality', () => {
     expect(box).toBeTruthy();
     if (box) {
       // Toast should be near bottom of viewport on mobile
-      expect(box.y + box.height).toBeGreaterThan(500);
+      expect(box.y + box.height).toBeGreaterThan(MOBILE_BOTTOM_THRESHOLD);
     }
   });
 
   test('toast positioning is responsive on desktop', async ({ page }) => {
     // Set desktop viewport
-    await page.setViewportSize({ width: 1920, height: 1080 });
+    const DESKTOP_WIDTH = 1920;
+    const DESKTOP_HEIGHT = 1080;
+    const DESKTOP_TOP_THRESHOLD = DESKTOP_HEIGHT * 0.2; // Toast should be in top 20% of viewport
+    const DESKTOP_RIGHT_THRESHOLD = DESKTOP_WIDTH * 0.7; // Toast should be in right 30% of viewport
+    
+    await page.setViewportSize({ width: DESKTOP_WIDTH, height: DESKTOP_HEIGHT });
 
     const todoPage = new TodoPage(page);
     const todoText = generateUniqueTodoText('Task to delete');
@@ -306,9 +315,9 @@ test.describe('Undo/Redo Functionality', () => {
     expect(box).toBeTruthy();
     if (box) {
       // Toast should be near top of viewport on desktop
-      expect(box.y).toBeLessThan(200);
+      expect(box.y).toBeLessThan(DESKTOP_TOP_THRESHOLD);
       // Toast should be on right side
-      expect(box.x).toBeGreaterThan(1400);
+      expect(box.x).toBeGreaterThan(DESKTOP_RIGHT_THRESHOLD);
     }
   });
 });
