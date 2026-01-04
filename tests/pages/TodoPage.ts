@@ -230,10 +230,47 @@ export class TodoPage extends BasePage {
     return await emptyState.textContent();
   }
 
+  // Sidebar and Menu
+  async openSidebar() {
+    // Click the burger menu button
+    const burgerButton = this.page.locator('button[aria-label*="navigation menu"]');
+    await burgerButton.waitFor({ state: 'visible', timeout: 5000 });
+    await burgerButton.click();
+    // Wait for sidebar to be visible
+    await this.page.waitForSelector('[role="navigation"]', { timeout: 5000 });
+  }
+
+  async closeSidebar() {
+    // Click the close button in sidebar
+    const closeButton = this.page.locator('button[aria-label="Close navigation menu"]').last();
+    if (await closeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await closeButton.click();
+      // Wait for sidebar to be hidden
+      await this.page.waitForTimeout(500);
+    }
+  }
+
+  async isSidebarOpen() {
+    const sidebar = this.page.locator('[role="navigation"]');
+    if (!await sidebar.isVisible({ timeout: 1000 }).catch(() => false)) {
+      return false;
+    }
+    // Check if sidebar has translated (not hidden by transform)
+    const transform = await sidebar.evaluate((el) => 
+      window.getComputedStyle(el).transform
+    );
+    return !transform.includes('matrix') || !transform.includes('-');
+  }
+
   // Search
   async fillSearch(query: string) {
-    // Search bar only appears when there are todos
-    // Wait for it to be visible first
+    // Open sidebar first if not open
+    const sidebarOpen = await this.isSidebarOpen();
+    if (!sidebarOpen) {
+      await this.openSidebar();
+    }
+
+    // Search input is now in the sidebar
     const searchInput = this.page.locator('input[aria-label="Search todos"]');
     await searchInput.waitFor({ state: 'visible', timeout: 5000 });
     await searchInput.fill(query);
@@ -242,6 +279,12 @@ export class TodoPage extends BasePage {
   }
 
   async clearSearch() {
+    // Open sidebar first if not open
+    const sidebarOpen = await this.isSidebarOpen();
+    if (!sidebarOpen) {
+      await this.openSidebar();
+    }
+
     const clearButton = this.page.locator('button[aria-label="Clear search"]');
     if (await clearButton.isVisible({ timeout: 2000 }).catch(() => false)) {
       await clearButton.click();
@@ -249,12 +292,17 @@ export class TodoPage extends BasePage {
   }
 
   async focusSearchWithKeyboard() {
-    // Search bar only appears when there are todos
-    // Make sure it exists first
+    // Open sidebar first if not open
+    const sidebarOpen = await this.isSidebarOpen();
+    if (!sidebarOpen) {
+      await this.openSidebar();
+    }
+
+    // Search input is in the sidebar
     const searchInput = this.page.locator('input[aria-label="Search todos"]');
     const isVisible = await searchInput.isVisible({ timeout: 2000 }).catch(() => false);
     if (!isVisible) {
-      throw new Error('Search bar is not visible. Add some todos first.');
+      throw new Error('Search bar is not visible in sidebar. Sidebar may not be open.');
     }
     
     // Press Ctrl/Cmd+K

@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FloatingActionButton } from './components/FloatingActionButton';
 import { TodoList } from './components/TodoList';
-import { SearchBar } from './components/SearchBar';
 import { FilterMenu, FilterStatus } from './components/FilterMenu';
+import { Sidebar } from './components/Sidebar';
+import { BurgerMenuButton } from './components/BurgerMenuButton';
+import { Backdrop } from './components/Backdrop';
 import { useSync } from './hooks/useSync';
 import { authService } from './services/auth';
 import { LoginForm } from './components/Auth/LoginForm';
@@ -20,6 +22,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { todos, addTodo, updateTodo, deleteTodo, syncWithServer, syncStatus } = useSync();
 
   // Debounced search with configurable delay
@@ -62,7 +65,59 @@ function App() {
     authService.logout();
     setIsAuthenticated(false);
     setAuthView('login'); // Reset to login view after logout
+    setIsSidebarOpen(false); // Close sidebar on logout
   };
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen((prev) => !prev);
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
+  // Keyboard shortcut: Ctrl/Cmd + B to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Click outside detection for desktop
+  useEffect(() => {
+    if (!isSidebarOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const sidebar = document.querySelector('[role="navigation"]');
+      const burgerButton = document.querySelector('[aria-label*="navigation menu"]');
+
+      // Close if clicking outside sidebar and not on the burger button
+      if (
+        sidebar &&
+        !sidebar.contains(target) &&
+        burgerButton &&
+        !burgerButton.contains(target)
+      ) {
+        closeSidebar();
+      }
+    };
+
+    // Add slight delay to avoid closing immediately on open
+    setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSidebarOpen]);
 
   const handleToggle = useCallback((id: string) => {
     const todo = todos.find((t) => t.id === id);
@@ -139,11 +194,25 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={closeSidebar}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
+
+      {/* Backdrop */}
+      <Backdrop isVisible={isSidebarOpen} onClick={closeSidebar} />
+
       <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 md:py-12 pb-24">
         {/* Header */}
         <header className="mb-8 sm:mb-10">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex-1">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1">
+              {/* Burger Menu Button */}
+              <BurgerMenuButton onClick={toggleSidebar} isOpen={isSidebarOpen} />
+              
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">
                   OpenList
@@ -151,9 +220,6 @@ function App() {
                 {/* Sync Status - Positioned at top */}
                 <SyncStatus status={syncStatus} />
               </div>
-              {user && (
-                <p className="text-sm text-gray-500 mt-2">{user.email}</p>
-              )}
             </div>
             <button
               onClick={handleLogout}
@@ -163,21 +229,21 @@ function App() {
             </button>
           </div>
           
+          {user && (
+            <p className="text-sm text-gray-500 mt-2 ml-14 sm:ml-[60px]">{user.email}</p>
+          )}
+          
           {totalCount > 0 && (
-            <div className="mb-4">
+            <div className="mb-4 ml-14 sm:ml-[60px]">
               <p className="text-sm sm:text-base text-gray-500 mb-4">
                 {completedCount} of {totalCount} completed
               </p>
             </div>
           )}
 
-          {/* Search and Filter */}
+          {/* Filter - Search removed from main view */}
           {totalCount > 0 && (
-            <div className="space-y-3 mb-6">
-              <SearchBar
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
+            <div className="space-y-3 mb-6 ml-14 sm:ml-[60px]">
               <FilterMenu
                 value={filterStatus}
                 onChange={setFilterStatus}
