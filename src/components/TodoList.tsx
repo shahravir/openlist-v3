@@ -26,7 +26,7 @@ export function TodoList({ todos, onToggle, onDelete, onUpdate }: TodoListProps)
           </svg>
         </div>
         <p className="text-gray-400 text-center text-base">
-          No tasks yet. Add one above to get started.
+          No tasks yet. Tap the + button to add one.
         </p>
       </div>
     );

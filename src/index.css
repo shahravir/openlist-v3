@@ -29,5 +29,37 @@
     white-space: nowrap;
     border-width: 0;
   }
+
+  /* FAB Animations */
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+
+  /* Todo Item Animations */
+  @keyframes fade-in-scale {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .animate-fade-in-scale {
+    animation: fade-in-scale 0.3s ease-out;
+  }
 }
 

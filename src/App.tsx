@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { TodoInput } from './components/TodoInput';
+import { FloatingActionButton } from './components/FloatingActionButton';
 import { TodoList } from './components/TodoList';
 import { useSync } from './hooks/useSync';
 import { authService } from './services/auth';
@@ -63,12 +63,12 @@ function App() {
     ? todos 
     : todos.filter((t) => !t.completed);
   
-  // Sort todos: incomplete first, then by creation date
+  // Sort todos: incomplete first, then by creation date (oldest first, newest at bottom)
   const sortedTodos = [...filteredTodos].sort((a, b) => {
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1;
     }
-    return b.createdAt - a.createdAt;
+    return a.createdAt - b.createdAt;
   });
 
   const completedCount = todos.filter((t) => t.completed).length;
@@ -106,7 +106,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 md:py-12">
+      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 md:py-12 pb-24">
         {/* Header */}
         <header className="mb-8 sm:mb-10">
           <div className="flex items-center justify-between mb-4">
@@ -148,11 +148,6 @@ function App() {
           </div>
         </header>
 
-        {/* Input */}
-        <div className="mb-6 sm:mb-8">
-          <TodoInput onAdd={addTodo} />
-        </div>
-
         {/* Todo List */}
         <TodoList
           todos={sortedTodos}
@@ -161,6 +156,9 @@ function App() {
           onUpdate={handleUpdate}
         />
       </div>
+
+      {/* Floating Action Button */}
+      <FloatingActionButton onAdd={addTodo} />
     </div>
   );
 }
