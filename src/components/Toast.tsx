@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { TOAST_DURATION_MS, TOAST_ANIMATION_DURATION_MS } from '../utils/constants';
+import { TOAST_DURATION_MS, TOAST_ANIMATION_DURATION_MS, TOAST_MIN_SWIPE_DISTANCE_PX } from '../utils/constants';
 
 interface ToastProps {
   message: string;
@@ -21,9 +21,6 @@ export function Toast({
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastRef = useRef<HTMLDivElement>(null);
-
-  // Minimum swipe distance (in px) to trigger dismiss
-  const minSwipeDistance = 50;
 
   const handleDismiss = useCallback(() => {
     setIsVisible(false);
@@ -56,11 +53,13 @@ export function Toast({
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (e.targetTouches.length === 0) return;
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientY);
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
+    if (e.targetTouches.length === 0) return;
     setTouchEnd(e.targetTouches[0].clientY);
   };
 
@@ -68,7 +67,7 @@ export function Toast({
     if (!touchStart || !touchEnd) return;
     
     const distance = touchStart - touchEnd;
-    const isSwipeDown = distance < -minSwipeDistance;
+    const isSwipeDown = distance < -TOAST_MIN_SWIPE_DISTANCE_PX;
     
     if (isSwipeDown) {
       handleDismiss();

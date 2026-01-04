@@ -156,21 +156,18 @@ function App() {
       const previousCompleted = todo.completed;
       updateTodo(id, { completed: !todo.completed });
       
-      // Track undo action
-      addUndoAction({
+      // Create undo action
+      const undoAction: UndoAction = {
         type: 'complete',
         todo: { ...todo },
         previousCompleted,
-      });
+      };
       
-      // Show toast notification
+      // Track undo action and show toast
+      addUndoAction(undoAction);
       setToastState({
         message: previousCompleted ? 'Task marked as incomplete' : 'Task marked as complete',
-        action: {
-          type: 'complete',
-          todo: { ...todo },
-          previousCompleted,
-        },
+        action: undoAction,
       });
     }
   }, [todos, updateTodo, addUndoAction]);
@@ -181,21 +178,18 @@ function App() {
       const previousText = todo.text;
       updateTodo(id, { text });
       
-      // Track undo action
-      addUndoAction({
+      // Create undo action
+      const undoAction: UndoAction = {
         type: 'edit',
         todo: { ...todo, text },
         previousText,
-      });
+      };
       
-      // Show toast notification
+      // Track undo action and show toast
+      addUndoAction(undoAction);
       setToastState({
         message: 'Task updated',
-        action: {
-          type: 'edit',
-          todo: { ...todo, text },
-          previousText,
-        },
+        action: undoAction,
       });
     }
   }, [todos, updateTodo, addUndoAction]);
@@ -205,19 +199,17 @@ function App() {
     if (todo) {
       deleteTodo(id);
       
-      // Track undo action
-      addUndoAction({
+      // Create undo action
+      const undoAction: UndoAction = {
         type: 'delete',
         todo: { ...todo },
-      });
+      };
       
-      // Show toast notification
+      // Track undo action and show toast
+      addUndoAction(undoAction);
       setToastState({
         message: 'Task deleted',
-        action: {
-          type: 'delete',
-          todo: { ...todo },
-        },
+        action: undoAction,
       });
     }
   }, [todos, deleteTodo, addUndoAction]);
