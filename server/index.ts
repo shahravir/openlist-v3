@@ -16,8 +16,34 @@ const fastify = Fastify({
 const start = async () => {
   try {
     // Register CORS
+    // Allow Capacitor origins (capacitor://localhost, ionic://localhost, http://localhost)
+    // and configured frontend URL
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'capacitor://localhost',
+      'ionic://localhost',
+      'http://localhost',
+      'http://localhost:5173',
+      'http://localhost:3000',
+    ];
+    
     await fastify.register(cors, {
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, Postman, etc.)
+        if (!origin) {
+          return callback(null, true);
+        }
+        // Check if origin is in allowed list
+        if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+          return callback(null, true);
+        }
+        // For development, allow all origins (remove in production)
+        if (process.env.NODE_ENV !== 'production') {
+          return callback(null, true);
+        }
+        // Reject in production if not allowed
+        callback(new Error('Not allowed by CORS'), false);
+      },
       credentials: true,
     });
 

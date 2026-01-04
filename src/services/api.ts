@@ -1,7 +1,8 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { Todo, AuthResponse, User } from '../types';
+import { Todo, AuthResponse } from '../types';
+import { getApiBaseUrl } from '../utils/config';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiClient {
   private client: AxiosInstance;
@@ -36,6 +37,27 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
+        // Log detailed error for debugging
+        if (error.response) {
+          // Server responded with error status
+          console.error('[API] Server error:', {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            url: error.config?.url,
+          });
+        } else if (error.request) {
+          // Request was made but no response received
+          console.error('[API] Network error:', {
+            message: error.message,
+            url: error.config?.url,
+            baseURL: error.config?.baseURL,
+          });
+        } else {
+          // Error setting up the request
+          console.error('[API] Request setup error:', error.message);
+        }
+
         if (error.response?.status === 401) {
           // Token expired or invalid
           this.clearAuthToken();

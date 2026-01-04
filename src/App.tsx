@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Todo } from './types';
 import { TodoInput } from './components/TodoInput';
 import { TodoList } from './components/TodoList';
 import { useSync } from './hooks/useSync';
 import { authService } from './services/auth';
-import { apiClient } from './services/api';
 import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
 import { SyncStatus } from './components/SyncStatus';

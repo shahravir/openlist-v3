@@ -23,3 +23,31 @@ dist-ssr
 *.sln
 *.sw?
 
+# Mobile build artifacts
+# Note: Some teams commit ios/ and android/ folders, others don't
+# Uncomment the following lines if you want to exclude native projects:
+# ios/
+# android/
+*.xcworkspace
+!default.xcworkspace
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+.DS_Store
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+local.properties
+.gradle/
+build/
+*.iml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/shelf
+

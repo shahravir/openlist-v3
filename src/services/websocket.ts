@@ -21,8 +21,10 @@ interface Command {
   };
 }
 
+import { getWebSocketUrl } from '../utils/config';
+
 const DEBUG_KEY = 'openlist:debug';
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001/ws';
+const WS_URL = getWebSocketUrl();
 
 function isDebugMode(): boolean {
   if (typeof window !== 'undefined') {

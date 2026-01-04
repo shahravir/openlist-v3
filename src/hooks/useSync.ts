@@ -342,9 +342,42 @@ export function useSync() {
       // Clear sync queue after successful sync
       setSyncQueue([]);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sync failed';
+      // Enhanced error logging
+      let errorMessage = 'Sync failed';
+      let errorDetails: any = {};
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        errorDetails = {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        };
+      }
+
+      // Check if it's an Axios error for more details
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as any;
+        errorDetails = {
+          ...errorDetails,
+          status: axiosError.response?.status,
+          statusText: axiosError.response?.statusText,
+          data: axiosError.response?.data,
+          url: axiosError.config?.url,
+        };
+        if (axiosError.response?.data?.message) {
+          errorMessage = axiosError.response.data.message;
+        } else if (axiosError.response?.status) {
+          errorMessage = `HTTP ${axiosError.response.status}: ${axiosError.response.statusText || errorMessage}`;
+        }
+      }
+
       setSyncError(errorMessage);
-      logSync('SYNC', 'Sync error', { method: syncMethod, error: errorMessage });
+      logSync('SYNC', 'Sync error', { 
+        method: syncMethod, 
+        error: errorMessage,
+        details: errorDetails,
+      });
       // Don't clear local todos on error - keep what we have
     } finally {
       setIsSyncing(false);
