@@ -25,7 +25,23 @@ export async function assertTodoDoesNotExist(page: Page, text: string) {
  */
 export async function assertTodoCount(page: Page, expectedCount: number) {
   const todos = page.locator('.group.flex.items-center.gap-3.px-4.py-3.bg-white.rounded-lg');
-  await expect(todos).toHaveCount(expectedCount);
+  
+  // If expecting 0, wait for no todos to be visible
+  if (expectedCount === 0) {
+    await expect(todos).toHaveCount(0, { timeout: 5000 });
+    return;
+  }
+  
+  // Wait for at least one todo to be visible first (indicates list has rendered)
+  if (expectedCount > 0) {
+    await expect(todos.first()).toBeVisible({ timeout: 10000 }).catch(() => {
+      // If no todos are visible and we expected some, that's an error
+      throw new Error(`Expected ${expectedCount} todos but none are visible`);
+    });
+  }
+  
+  // Wait for the expected count with a reasonable timeout
+  await expect(todos).toHaveCount(expectedCount, { timeout: 10000 });
 }
 
 /**

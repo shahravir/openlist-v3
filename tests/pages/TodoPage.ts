@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class TodoPage extends BasePage {
@@ -407,8 +407,24 @@ export class TodoPage extends BasePage {
   }
 
   async selectFilter(filter: 'All' | 'Active' | 'Completed') {
-    await this.page.click(`button:has-text("${filter}")`);
-    await this.page.waitForTimeout(300);
+    // Target the filter menu button specifically (not the sidebar date filter)
+    // The filter menu buttons are within a div with role="group" and aria-label="Filter todos by status"
+    const filterGroup = this.page.locator('[role="group"][aria-label="Filter todos by status"]');
+    const filterButton = filterGroup.locator(`button:has-text("${filter}")`);
+    await filterButton.click();
+    // Wait for filter button to show active state (indicates filter has been applied)
+    await expect(filterButton).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 });
+    // Wait for filter to apply and UI to update
+    await this.page.waitForTimeout(500);
+    // Wait for todos to be visible/updated (or empty state if no todos match)
+    try {
+      await this.page.waitForSelector('.group.flex.items-center.gap-3.px-4.py-3.bg-white.rounded-lg, text=No tasks yet', { 
+        state: 'attached',
+        timeout: 5000 
+      });
+    } catch {
+      // If selector times out, that's okay - might be empty state or still loading
+    }
   }
 
   // Stats

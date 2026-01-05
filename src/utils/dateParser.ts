@@ -231,6 +231,35 @@ export function formatDueDate(timestamp: number, compact: boolean = false): stri
 }
 
 /**
+ * Format date as relative text (today, tomorrow, yesterday) or actual date
+ */
+export function formatDueDateRelative(timestamp: number): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const dueDate = new Date(timestamp);
+  dueDate.setHours(0, 0, 0, 0);
+  
+  const diffTime = dueDate.getTime() - today.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return 'today';
+  } else if (diffDays === 1) {
+    return 'tomorrow';
+  } else if (diffDays === -1) {
+    return 'yesterday';
+  } else {
+    // For other dates, return the formatted date
+    return dueDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: dueDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
+    });
+  }
+}
+
+/**
  * Get the status of a due date (overdue, today, upcoming)
  */
 export type DueDateStatus = 'overdue' | 'today' | 'upcoming';

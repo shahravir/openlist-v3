@@ -67,6 +67,7 @@ export function useSync() {
   const [wsConnected, setWsConnected] = useState(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncStatsRef = useRef({ websocket: 0, http: 0 });
+  const previousUserIdRef = useRef<string | null>(null);
 
   // Monitor online/offline status
   useEffect(() => {
@@ -81,6 +82,36 @@ export function useSync() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Clear todos when user changes (prevent cross-user data leakage)
+  useEffect(() => {
+    try {
+      const authUser = localStorage.getItem('auth_user');
+      const currentUserId = authUser ? JSON.parse(authUser)?.id : null;
+      
+      // If user ID changed (or user logged out), clear todos
+      if (previousUserIdRef.current !== null && previousUserIdRef.current !== currentUserId) {
+        logSync('SYNC', 'User changed, clearing todos', { 
+          previousUserId: previousUserIdRef.current, 
+          currentUserId 
+        });
+        setTodos([]);
+        setSyncQueue([]);
+        setLastSyncTime(null);
+      }
+      
+      previousUserIdRef.current = currentUserId;
+    } catch (error) {
+      // If we can't read user, that's okay - might be logged out
+      if (previousUserIdRef.current !== null) {
+        logSync('SYNC', 'User logged out, clearing todos');
+        setTodos([]);
+        setSyncQueue([]);
+        setLastSyncTime(null);
+        previousUserIdRef.current = null;
+      }
+    }
+  }, [setTodos, setSyncQueue, setLastSyncTime]);
 
   // Merge todos from server with conflict resolution
   const mergeTodosFromServer = useCallback((serverTodos: Todo[]) => {
@@ -195,12 +226,24 @@ export function useSync() {
     const handleAuthChange = () => {
       logSync('WS', 'Auth state changed, reconnecting WebSocket');
       checkAndConnect();
+      // Clear todos when user changes to prevent data leakage
+      // The new user's todos will be loaded from server on initial sync
+      setTodos([]);
+      setSyncQueue([]);
+      setLastSyncTime(null);
+      previousUserIdRef.current = null; // Reset to trigger user change detection
     };
     window.addEventListener('auth:login', handleAuthChange);
-    window.addEventListener('auth:logout', () => {
+    const handleLogout = () => {
       wsService.disconnect();
       setWsConnected(false);
-    });
+      // Clear todos when user logs out to prevent data leakage
+      setTodos([]);
+      setSyncQueue([]);
+      setLastSyncTime(null);
+      previousUserIdRef.current = null;
+    };
+    window.addEventListener('auth:logout', handleLogout);
 
     // Helper to transform server format to client format
     const transformServerTodos = (serverData: any[]): Todo[] => {

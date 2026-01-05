@@ -391,7 +391,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
         </span>
         {todo.dueDate && (
           <div className="flex items-center">
-            <DueDateIndicator dueDate={todo.dueDate} compact={true} />
+            <DueDateIndicator dueDate={todo.dueDate} />
           </div>
         )}
       </div>

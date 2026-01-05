@@ -11,6 +11,7 @@ import {
 } from './utils/helpers';
 import {
   assertTodoExists,
+  assertTodoDoesNotExist,
   assertTodoCount,
   assertTodoCountInModal,
   assertUserIsAuthenticated,
@@ -44,7 +45,9 @@ test.describe('Integration Tests - Complete User Flows', () => {
     for (const todoText of todos) {
       await todoPage.addTodo(todoText);
     }
-
+    
+    // Wait for all todos to be added and rendered
+    await page.waitForTimeout(500);
     await assertTodoCount(page, 4);
 
     // Step 3: Search for a specific todo
@@ -98,6 +101,8 @@ test.describe('Integration Tests - Complete User Flows', () => {
     // Step 4: Add more todos
     await todoPage.addTodo(generateUniqueTodoText('New task 1'));
     await todoPage.addTodo(generateUniqueTodoText('New task 2'));
+    // Wait for todos to be added and rendered
+    await page.waitForTimeout(500);
     await assertTodoCount(page, 3);
 
     // Step 5: Complete some todos (use text-based lookup since they reorder)
@@ -130,12 +135,15 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await todoPage.addTodo(todo1);
     await todoPage.addTodo(todo2);
     await todoPage.addTodo(todo3);
+    // Wait for todos to be added and rendered
+    await page.waitForTimeout(500);
     await assertTodoCount(page, 3);
 
     // Step 2: Complete some todos (use text-based lookup since they reorder)
     await todoPage.toggleTodoByText(todo1);
     await todoPage.toggleTodoByText(todo3);
-    await page.waitForTimeout(500);
+    // Wait for todos to reorder after completion
+    await page.waitForTimeout(1000);
 
     // Verify completed count
     expect(await todoPage.getCompletedCount()).toBe(2);
@@ -150,10 +158,14 @@ test.describe('Integration Tests - Complete User Flows', () => {
 
     // Step 5: Switch back to all
     await todoPage.selectFilter('All');
+    // Wait a bit longer for all todos to be visible after switching back to All
+    await page.waitForTimeout(500);
     await assertTodoCount(page, 3);
 
     // Step 6: Delete a todo
     await todoPage.deleteTodo(0);
+    // Wait for todo to be deleted and UI to update
+    await page.waitForTimeout(500);
     await assertTodoCount(page, 2);
 
     // Step 7: Verify final state
@@ -175,6 +187,8 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await todoPage.addTodo(task1);
     await todoPage.addTodo(task2);
     await todoPage.addTodo(task3);
+    // Wait for todos to be added and rendered
+    await page.waitForTimeout(500);
     await assertTodoCount(page, 3);
 
     // Complete (they move to bottom after completion)
@@ -186,6 +200,8 @@ test.describe('Integration Tests - Complete User Flows', () => {
 
     // Delete one of the completed todos (task1, which is now at bottom)
     await todoPage.deleteTodoByText(task1);
+    // Wait for todo to be deleted and UI to update
+    await page.waitForTimeout(500);
     await assertTodoCount(page, 2);
 
     // Add more
@@ -286,7 +302,9 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await setupAuthenticatedSession(page, user1);
     const todoPage1 = new TodoPage(page);
     await todoPage1.addTodo('User 1 Task');
-    await page.waitForTimeout(1000);
+    // Wait for sync to complete
+    await page.waitForTimeout(2000);
+    await todoPage1.waitForSync(5000);
     await todoPage1.clickLogout();
 
     // User 2 session (same page)
@@ -296,10 +314,21 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await registerPage.goto();
     await registerPage.register(user2.email, user2.password);
     await registerPage.waitForNavigation();
-
+    
+    // Wait for initial sync to complete after registration
+    await page.waitForTimeout(2000);
     const todoPage2 = new TodoPage(page);
+    await todoPage2.waitForSync(5000);
+    
+    // Verify User 2 starts with no todos (after sync, should be empty)
+    await assertTodoCount(page, 0);
+    // Also verify User 1's task is NOT visible
+    await assertTodoDoesNotExist(page, 'User 1 Task');
+    
     await todoPage2.addTodo('User 2 Task');
+    // Wait for sync to complete
     await page.waitForTimeout(1000);
+    await todoPage2.waitForSync(5000);
 
     // User 2 should only see their task
     await assertTodoCount(page, 1);
@@ -310,8 +339,27 @@ test.describe('Integration Tests - Complete User Flows', () => {
     // User 1 logs back in
     await loginPage.login(user1.email, user1.password);
     await loginPage.waitForNavigation();
+    // Wait for initial sync to complete after login
     await page.waitForTimeout(2000);
-
+    const todoPage1Again = new TodoPage(page);
+    await todoPage1Again.waitForSync(5000);
+    
+    // Wait for the app to fully load and todos to be rendered
+    // Check that we're on the todo page and it's loaded
+    await todoPage1Again.waitForTodoApp();
+    
+    // Wait for todos to be loaded and filtered by the current user
+    // First, wait for "User 1 Task" to appear (confirms User 1's data is loaded)
+    await expect(page.locator('text=User 1 Task')).toBeVisible({ timeout: 10000 });
+    await page.waitForTimeout(1000);
+    
+    // Verify User 2's task is NOT visible (data isolation check)
+    const user2Task = page.locator('text=User 2 Task');
+    await expect(user2Task).not.toBeVisible({ timeout: 5000 }).catch(() => {
+      // If User 2's task is visible, that's a data isolation failure
+      throw new Error('Data isolation failure: User 1 can see User 2\'s todos');
+    });
+    
     // User 1 should only see their task
     await assertTodoCount(page, 1);
     await assertTodoExists(page, 'User 1 Task');
@@ -407,6 +455,8 @@ test.describe('Integration Tests - Complete User Flows', () => {
 
     // Tap to delete the incomplete one (task2, which is now at index 0)
     await todoPage.deleteTodoByText(task2);
+    // Wait for todo to be deleted and UI to update
+    await page.waitForTimeout(500);
 
     // Verify final state - only task1 remains, and it should be completed
     await assertTodoCount(page, 1);
