@@ -16,8 +16,10 @@ const fastify = Fastify({
 const start = async () => {
   try {
     // Register CORS
-    // Allow Capacitor origins (capacitor://localhost, ionic://localhost, http://localhost)
-    // and configured frontend URL
+    // Determine if we're in development mode
+    const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+    
+    // Build allowed origins list
     const allowedOrigins = [
       process.env.FRONTEND_URL || 'http://localhost:5173',
       'capacitor://localhost',
@@ -25,6 +27,8 @@ const start = async () => {
       'http://localhost',
       'http://localhost:5173',
       'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
     ];
     
     // Add Render service URL if provided
@@ -32,28 +36,56 @@ const start = async () => {
       allowedOrigins.push(process.env.RENDER_SERVICE_URL);
     }
     
+    // Add Vercel preview URLs in development
+    if (isDevelopment) {
+      // Allow common Vite dev server ports
+      for (let port = 5173; port <= 5180; port++) {
+        allowedOrigins.push(`http://localhost:${port}`);
+        allowedOrigins.push(`http://127.0.0.1:${port}`);
+      }
+    }
+    
     await fastify.register(cors, {
       origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps, Postman, etc.)
+        // Allow requests with no origin (like mobile apps, Postman, curl, etc.)
         if (!origin) {
           return callback(null, true);
         }
-        // Check if origin is in allowed list
-        if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+        
+        // In development mode, allow all origins for easier local development
+        if (isDevelopment) {
+          console.log(`[CORS] Development mode: Allowing origin: ${origin}`);
           return callback(null, true);
         }
-        // In production, also allow Render service URLs (for health checks, etc.)
-        if (process.env.NODE_ENV === 'production' && origin.includes('.onrender.com')) {
+        
+        // In production, check against allowed origins list
+        // Check for exact match first
+        if (allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
-        // For development, allow all origins
-        if (process.env.NODE_ENV !== 'production') {
+        
+        // Check if origin starts with any allowed origin (for subdomains, etc.)
+        if (allowedOrigins.some(allowed => origin === allowed || origin.startsWith(allowed + '/'))) {
           return callback(null, true);
         }
-        // Reject in production if not allowed
+        
+        // In production, also allow Render service URLs
+        if (origin.includes('.onrender.com')) {
+          return callback(null, true);
+        }
+        
+        // In production, also allow Vercel preview URLs
+        if (origin.includes('.vercel.app') || origin.includes('.vercel.sh')) {
+          return callback(null, true);
+        }
+        
+        // Reject if not in allowed list
+        console.warn(`[CORS] Rejected origin: ${origin}`);
         callback(new Error('Not allowed by CORS'), false);
       },
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
     });
 
     // Register JWT

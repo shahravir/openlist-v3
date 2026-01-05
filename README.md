@@ -28,14 +28,26 @@ A minimalist, production-ready todo list application optimized for mobile, iPad,
 npm install
 ```
 
-2. Create a `.env` file (optional, defaults to production Render backend):
+2. Create a `.env` file (optional for local development):
 ```
-# For local development, use your local backend:
+# Backend API URL (required for production deployments like Vercel)
+# For local development, defaults to http://localhost:3001/api if not set
 VITE_API_URL=http://localhost:3001/api
 
-# Or use the production backend (default):
-# VITE_API_URL=https://openlist-v3-server.onrender.com/api
+# WebSocket URL (optional - auto-derived from VITE_API_URL if not set)
+# Only set this if your WebSocket endpoint is different
+# VITE_WS_URL=ws://localhost:3001/ws
 ```
+
+**Environment Variable Priority:**
+- `VITE_API_URL` - Backend API URL (highest priority, recommended for all deployments)
+- `VITE_WS_URL` - WebSocket URL (optional, auto-derived from API URL if not set)
+- If `VITE_API_URL` is not set:
+  - Development mode: defaults to `http://localhost:3001/api`
+  - Production mode: falls back to `https://openlist-v3-server.onrender.com/api`
+
+**For Production Deployments (e.g., Vercel):**
+Always set `VITE_API_URL` in your deployment platform's environment variables to point to your backend API.
 
 3. Run the development server:
 ```bash
