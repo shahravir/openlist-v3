@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { parseDateFromText } from '../utils/dateParser';
 import { DatePicker } from './DatePicker';
+import { PrioritySelector, Priority } from './PrioritySelector';
 
 interface AddTodoExpandedProps {
-  onAdd: (text: string, dueDate?: number | null) => void;
+  onAdd: (text: string, dueDate?: number | null, priority?: Priority) => void;
   onCancel: () => void;
 }
 
@@ -12,7 +13,9 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
   const [detectedDate, setDetectedDate] = useState<{ date: Date; dateText: string } | null>(null);
   const [showDatePreview, setShowDatePreview] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showPrioritySelector, setShowPrioritySelector] = useState(false);
   const [manualDueDate, setManualDueDate] = useState<number | null>(null);
+  const [priority, setPriority] = useState<Priority>('none');
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-focus input when expanded
@@ -81,12 +84,14 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
         finalDueDate = detectedDate.date.getTime();
       }
 
-      onAdd(finalText, finalDueDate);
+      onAdd(finalText, finalDueDate, priority);
       setText('');
       setDetectedDate(null);
       setShowDatePreview(false);
       setManualDueDate(null);
+      setPriority('none');
       setShowDatePicker(false);
+      setShowPrioritySelector(false);
     }
   };
 
@@ -110,7 +115,9 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
     setDetectedDate(null);
     setShowDatePreview(false);
     setManualDueDate(null);
+    setPriority('none');
     setShowDatePicker(false);
+    setShowPrioritySelector(false);
     onCancel();
   };
 
@@ -200,6 +207,29 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
               value={manualDueDate}
               onChange={handleManualDateChange}
               onClose={() => setShowDatePicker(false)}
+            />
+          )}
+        </div>
+
+        {/* Priority selector button and selector */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowPrioritySelector(!showPrioritySelector)}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-300"
+            aria-label="Set priority"
+          >
+            <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+              <path d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+            </svg>
+            <span>Priority: {priority.charAt(0).toUpperCase() + priority.slice(1)}</span>
+          </button>
+
+          {showPrioritySelector && (
+            <PrioritySelector
+              value={priority}
+              onChange={setPriority}
+              isMobile={window.innerWidth < 768}
             />
           )}
         </div>

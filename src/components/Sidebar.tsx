@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 
 export type DateFilter = 'all' | 'overdue' | 'today' | 'week' | 'upcoming' | 'no-date';
 export type FilterStatus = 'all' | 'active' | 'completed';
+export type PriorityFilter = 'all' | 'none' | 'low' | 'medium' | 'high';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,10 +12,12 @@ interface SidebarProps {
   onDateFilterChange?: (filter: DateFilter) => void;
   filterStatus?: FilterStatus;
   onFilterStatusChange?: (status: FilterStatus) => void;
+  priorityFilter?: PriorityFilter;
+  onPriorityFilterChange?: (priority: PriorityFilter) => void;
   isPersistent?: boolean; // For desktop persistent sidebar
 }
 
-export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onDateFilterChange, filterStatus = 'all', onFilterStatusChange, isPersistent = false }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onDateFilterChange, filterStatus = 'all', onFilterStatusChange, priorityFilter = 'all', onPriorityFilterChange, isPersistent = false }: SidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -286,6 +289,96 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                     <path d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   <span>No Date</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Priority Filters */}
+          {onPriorityFilterChange && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2">
+                Priority
+              </h3>
+              <div className="space-y-1">
+                <button
+                  onClick={() => onPriorityFilterChange('all')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    priorityFilter === 'all'
+                      ? 'bg-primary-50 text-primary-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show all priorities"
+                  aria-pressed={priorityFilter === 'all'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  <span>All</span>
+                </button>
+                
+                <button
+                  onClick={() => onPriorityFilterChange('high')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    priorityFilter === 'high'
+                      ? 'bg-red-50 text-red-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show high priority todos"
+                  aria-pressed={priorityFilter === 'high'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M5 10l7-7m0 0l7 7m-7-7v18M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                  <span>High</span>
+                </button>
+                
+                <button
+                  onClick={() => onPriorityFilterChange('medium')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    priorityFilter === 'medium'
+                      ? 'bg-yellow-50 text-yellow-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show medium priority todos"
+                  aria-pressed={priorityFilter === 'medium'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                  <span>Medium</span>
+                </button>
+                
+                <button
+                  onClick={() => onPriorityFilterChange('low')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    priorityFilter === 'low'
+                      ? 'bg-blue-50 text-blue-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show low priority todos"
+                  aria-pressed={priorityFilter === 'low'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                  <span>Low</span>
+                </button>
+                
+                <button
+                  onClick={() => onPriorityFilterChange('none')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    priorityFilter === 'none'
+                      ? 'bg-gray-100 text-gray-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show todos without priority"
+                  aria-pressed={priorityFilter === 'none'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M20 12H4" />
+                  </svg>
+                  <span>None</span>
                 </button>
               </div>
             </div>

@@ -8,13 +8,15 @@ import { DragHandle } from './DragHandle';
 import { ReorderButtons } from './ReorderButtons';
 import { DueDateIndicator } from './DueDateIndicator';
 import { DatePicker } from './DatePicker';
+import { PrioritySelector, Priority } from './PrioritySelector';
+import { PriorityIndicator } from './PriorityIndicator';
 import { parseDateFromText } from '../utils/dateParser';
 
 interface TodoItemProps {
   todo: Todo;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, text: string, dueDate?: number | null) => void;
+  onUpdate: (id: string, text: string, dueDate?: number | null, priority?: Priority) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   canMoveUp: boolean;
@@ -26,7 +28,9 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showPrioritySelector, setShowPrioritySelector] = useState(false);
   const [editDueDate, setEditDueDate] = useState<number | null>(todo.dueDate || null);
+  const [editPriority, setEditPriority] = useState<Priority>(todo.priority || 'none');
   const [detectedDate, setDetectedDate] = useState<{ date: Date; dateText: string } | null>(null);
   const [showDatePreview, setShowDatePreview] = useState(false);
   const [announcement, setAnnouncement] = useState<string>('');
@@ -59,13 +63,14 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     }
   }, [todo.createdAt]);
 
-  // Update editText and editDueDate when todo changes externally (e.g., from sync)
+  // Update editText, editDueDate, and editPriority when todo changes externally (e.g., from sync)
   useEffect(() => {
     if (!isEditing) {
       setEditText(todo.text);
       setEditDueDate(todo.dueDate || null);
+      setEditPriority(todo.priority || 'none');
     }
-  }, [todo.text, todo.dueDate, isEditing]);
+  }, [todo.text, todo.dueDate, todo.priority, isEditing]);
 
   // Detect dates in the text as user types (only when editing and no manual date picker is set)
   useEffect(() => {
@@ -101,6 +106,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   const handleStartEdit = () => {
     setEditText(todo.text);
     setEditDueDate(todo.dueDate || null);
+    setEditPriority(todo.priority || 'none');
     setIsEditing(true);
   };
 
@@ -111,6 +117,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       // Invalid text, just close editing
       setIsEditing(false);
       setShowDatePicker(false);
+      setShowPrioritySelector(false);
       setDetectedDate(null);
       setShowDatePreview(false);
       return;
@@ -144,18 +151,20 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     // Check if there are actual changes (using final cleaned text)
     const textChanged = finalText !== todo.text;
     const dateChanged = (finalDueDate ?? null) !== (todo.dueDate ?? null);
+    const priorityChanged = editPriority !== (todo.priority ?? 'none');
     
     // Always save if a date was detected from text, even if text is the same
     // This ensures dates are always applied when mentioned in the text
     const dateWasDetected = dateParseResult.parsedDate !== null;
     
-    // Save if there are any changes (text or date) OR if a date was detected
-    if (textChanged || dateChanged || dateWasDetected) {
-      onUpdate(todo.id, finalText, finalDueDate);
+    // Save if there are any changes (text, date, or priority) OR if a date was detected
+    if (textChanged || dateChanged || priorityChanged || dateWasDetected) {
+      onUpdate(todo.id, finalText, finalDueDate, editPriority);
     }
     
     setIsEditing(false);
     setShowDatePicker(false);
+    setShowPrioritySelector(false);
     setDetectedDate(null);
     setShowDatePreview(false);
   };
@@ -163,8 +172,10 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   const handleCancel = () => {
     setEditText(todo.text);
     setEditDueDate(todo.dueDate || null);
+    setEditPriority(todo.priority || 'none');
     setIsEditing(false);
     setShowDatePicker(false);
+    setShowPrioritySelector(false);
     setDetectedDate(null);
     setShowDatePreview(false);
   };
@@ -247,6 +258,16 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
               </svg>
             </button>
             <button
+              onClick={() => setShowPrioritySelector(!showPrioritySelector)}
+              className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:text-primary-500 hover:bg-primary-50 transition-all duration-200 touch-manipulation"
+              aria-label="Set priority"
+              title="Set priority"
+            >
+              <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+              </svg>
+            </button>
+            <button
               onClick={handleSave}
               className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-white bg-primary-500 hover:bg-primary-600 transition-all duration-200 touch-manipulation"
               aria-label="Save changes"
@@ -281,6 +302,17 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
               </svg>
           </button>
           </div>
+          
+          {/* Priority selector */}
+          {showPrioritySelector && (
+            <div className="mt-2">
+              <PrioritySelector
+                value={editPriority}
+                onChange={setEditPriority}
+                isMobile={window.innerWidth < 768}
+              />
+            </div>
+          )}
           
           {/* Date picker */}
           {showDatePicker && (
@@ -367,11 +399,10 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
             todo.text
           )}
         </span>
-        {todo.dueDate && (
-          <div className="flex items-center">
-            <DueDateIndicator dueDate={todo.dueDate} />
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {todo.dueDate && <DueDateIndicator dueDate={todo.dueDate} />}
+          {todo.priority && <PriorityIndicator priority={todo.priority} />}
+        </div>
       </div>
       <button
         onClick={handleStartEdit}
