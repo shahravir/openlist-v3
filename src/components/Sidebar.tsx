@@ -199,7 +199,7 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                       ? 'bg-primary-50 text-primary-700 font-medium'
                       : 'text-gray-700 hover:bg-gray-50'
                   }`}
-                  aria-label="Show all todos"
+                  aria-label="Show all todos by due date"
                   aria-pressed={dateFilter === 'all'}
                 >
                   <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">

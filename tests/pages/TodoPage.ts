@@ -155,10 +155,20 @@ export class TodoPage extends BasePage {
 
   async deleteTodo(index: number) {
     const todo = this.getTodoItems().nth(index);
-    // Hover to show delete button on desktop
-    await todo.hover();
-    // Click the last button (delete button)
     const deleteButton = todo.locator('button[aria-label="Delete todo"]');
+    
+    // Check if we're on mobile (delete button is always visible on mobile)
+    const viewport = this.page.viewportSize();
+    const isMobile = viewport && viewport.width < 768; // md breakpoint
+    
+    if (!isMobile) {
+      // On desktop, hover to show delet
+      // e button
+      await todo.hover();
+    }
+    
+    // Wait for delete button to be visible and clickable
+    await deleteButton.waitFor({ state: 'visible', timeout: 5000 });
     await deleteButton.click();
     // Wait for animation
     await this.page.waitForTimeout(300);
@@ -242,13 +252,42 @@ export class TodoPage extends BasePage {
   }
 
   async closeSidebar() {
-    // Click the close button in sidebar
-    const closeButton = this.page.locator('button[aria-label="Close navigation menu"]').last();
-    if (await closeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await closeButton.click();
-      // Wait for sidebar to be hidden
-      await this.page.waitForTimeout(500);
+    // Check if sidebar is actually open
+    const sidebar = this.page.locator('[role="navigation"]');
+    const isOpen = await sidebar.isVisible({ timeout: 1000 }).catch(() => false);
+    
+    if (!isOpen) {
+      return; // Sidebar already closed
     }
+    
+    // Use Escape key as primary method (more reliable than clicking)
+    // The sidebar component handles Escape key to close
+    await this.page.keyboard.press('Escape');
+    
+    // Wait for sidebar to close - check if it's hidden or moved off-screen
+    try {
+      await sidebar.waitFor({ state: 'hidden', timeout: 2000 });
+    } catch {
+      // Fallback: check if sidebar transform moved it off-screen
+      const isClosed = await sidebar.evaluate((el) => {
+        const transform = window.getComputedStyle(el).transform;
+        const rect = el.getBoundingClientRect();
+        // Check if sidebar is off-screen (negative x position) or has translateX(-100%)
+        return transform.includes('translateX(-100%)') || rect.x < -100;
+      });
+      
+      if (!isClosed) {
+        // If Escape didn't work, try clicking the close button as fallback
+        const closeButton = this.page.locator('button[aria-label="Close navigation menu"]').first();
+        const isButtonVisible = await closeButton.isVisible({ timeout: 1000 }).catch(() => false);
+        if (isButtonVisible) {
+          await closeButton.click({ force: true, timeout: 2000 });
+        }
+      }
+    }
+    
+    // Small delay to ensure animation completes
+    await this.page.waitForTimeout(200);
   }
 
   async isSidebarOpen() {
@@ -409,6 +448,7 @@ export class TodoPage extends BasePage {
   async selectFilter(filter: 'All' | 'Active' | 'Completed') {
     // Filters are now in the sidebar - open sidebar if needed (on mobile)
     const sidebarOpen = await this.isSidebarOpen();
+    const wasSidebarClosed = !sidebarOpen;
     if (!sidebarOpen) {
       await this.openSidebar();
     }
@@ -430,6 +470,14 @@ export class TodoPage extends BasePage {
     
     // Wait for filter to apply and UI to update
     await this.page.waitForTimeout(500);
+    
+    // Close sidebar on mobile after selecting filter (to avoid blocking interactions)
+    // Check if we're on mobile by checking if burger button is visible
+    const burgerButton = this.page.locator('button[aria-label*="navigation menu"]');
+    const isMobile = await burgerButton.isVisible({ timeout: 1000 }).catch(() => false);
+    if (isMobile && wasSidebarClosed) {
+      await this.closeSidebar();
+    }
     
     // Wait for todos to be visible/updated (or empty state if no todos match)
     try {

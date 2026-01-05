@@ -182,13 +182,18 @@ test.describe('Due Dates Feature', () => {
     await expect(sidebar).toBeVisible({ timeout: 5000 });
 
     // Check for date filter buttons in the sidebar
-    // The sidebar has date filters, not the main filter menu
-    await expect(page.locator('button:has-text("All")')).toBeVisible();
-    await expect(page.locator('button:has-text("Overdue")')).toBeVisible();
-    await expect(page.locator('button:has-text("Today")')).toBeVisible();
-    await expect(page.locator('button:has-text("This Week")')).toBeVisible();
-    await expect(page.locator('button:has-text("Upcoming")')).toBeVisible();
-    await expect(page.locator('button:has-text("No Date")')).toBeVisible();
+    // Use aria-labels to distinguish from status filters
+    await expect(page.locator('button[aria-label="Show all todos by due date"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Show overdue todos"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Show todos due today"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Show todos due this week"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Show upcoming todos"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Show todos without due date"]')).toBeVisible();
+    
+    // Also verify status filters are present
+    await expect(page.locator('button[aria-label="Show all todos"]')).toBeVisible(); // Status filter
+    await expect(page.locator('button[aria-label="Show active todos"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Show completed todos"]')).toBeVisible();
   });
 
   test('can filter todos by "No Date"', async ({ page }) => {
@@ -218,8 +223,8 @@ test.describe('Due Dates Feature', () => {
     // Wait for sidebar to be visible
     await expect(page.locator('[role="navigation"]')).toBeVisible({ timeout: 5000 });
 
-    // Click "No Date" filter
-    await page.click('button:has-text("No Date")');
+    // Click "No Date" filter (use aria-label to distinguish from status filters)
+    await page.click('button[aria-label="Show todos without due date"]');
     await page.waitForTimeout(300);
 
     // Todo without date should be visible

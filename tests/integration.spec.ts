@@ -148,7 +148,7 @@ test.describe('Integration Tests - Complete User Flows', () => {
     // Verify completed count
     expect(await todoPage.getCompletedCount()).toBe(2);
 
-    // Step 3: Filter by completed
+    // Step 3: Filter by completed (filters are now in sidebar)
     await todoPage.selectFilter('Completed');
     await assertTodoCount(page, 2);
 
@@ -251,7 +251,7 @@ test.describe('Integration Tests - Complete User Flows', () => {
     const todoAt2 = await todoPage.getTodoText(2);
     await todoPage.toggleTodoByText(todoAt2 || '');
 
-    // Filter by completed
+    // Filter by completed (filters are now in sidebar)
     await todoPage.selectFilter('Completed');
     await assertTodoCount(page, 2);
 
