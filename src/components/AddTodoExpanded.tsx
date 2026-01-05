@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { parseDateFromText } from '../utils/dateParser';
+import { parsePriorityFromText } from '../utils/priorityParser';
 import { DatePicker } from './DatePicker';
 import { PrioritySelector, Priority, priorityConfig } from './PrioritySelector';
 
@@ -11,7 +12,9 @@ interface AddTodoExpandedProps {
 export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
   const [text, setText] = useState('');
   const [detectedDate, setDetectedDate] = useState<{ date: Date; dateText: string } | null>(null);
+  const [detectedPriority, setDetectedPriority] = useState<{ priority: Priority; priorityText: string } | null>(null);
   const [showDatePreview, setShowDatePreview] = useState(false);
+  const [showPriorityPreview, setShowPriorityPreview] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPrioritySelector, setShowPrioritySelector] = useState(false);
   const [manualDueDate, setManualDueDate] = useState<number | null>(null);
@@ -39,6 +42,31 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
       setShowDatePreview(false);
     }
   }, [text, manualDueDate]);
+
+  // Detect priority in the text as user types
+  useEffect(() => {
+    if (text.trim() && priority === 'none') {
+      const result = parsePriorityFromText(text);
+      if (result.parsedPriority) {
+        setDetectedPriority(result.parsedPriority);
+        setShowPriorityPreview(true);
+      } else {
+        setDetectedPriority(null);
+        setShowPriorityPreview(false);
+      }
+    } else {
+      setDetectedPriority(null);
+      setShowPriorityPreview(false);
+    }
+  }, [text, priority]);
+
+  // Update priority state when detected priority changes (for button display)
+  // Only auto-set if priority is still 'none' (user hasn't manually set it)
+  useEffect(() => {
+    if (detectedPriority && priority === 'none') {
+      setPriority(detectedPriority.priority);
+    }
+  }, [detectedPriority, priority]);
 
   // Focus trap - keep focus within expanded view
   useEffect(() => {
@@ -73,21 +101,32 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
     if (trimmedText) {
       let finalText = trimmedText;
       let finalDueDate: number | null = manualDueDate;
+      let finalPriority: Priority = priority;
 
       // If manual date is set, use it
       if (manualDueDate) {
         finalDueDate = manualDueDate;
       } else if (detectedDate) {
         // Parse the text to remove the date
-        const result = parseDateFromText(trimmedText);
-        finalText = result.cleanedText;
+        const dateResult = parseDateFromText(trimmedText);
+        finalText = dateResult.cleanedText;
         finalDueDate = detectedDate.date.getTime();
       }
 
-      onAdd(finalText, finalDueDate, priority);
+      // If priority is manually set, use it; otherwise check for detected priority
+      if (priority === 'none' && detectedPriority) {
+        // Parse the text to remove the priority
+        const priorityResult = parsePriorityFromText(finalText);
+        finalText = priorityResult.cleanedText;
+        finalPriority = detectedPriority.priority;
+      }
+
+      onAdd(finalText, finalDueDate, finalPriority);
       setText('');
       setDetectedDate(null);
+      setDetectedPriority(null);
       setShowDatePreview(false);
+      setShowPriorityPreview(false);
       setManualDueDate(null);
       setPriority('none');
       setShowDatePicker(false);
@@ -98,6 +137,11 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
   const handleRejectDate = () => {
     setDetectedDate(null);
     setShowDatePreview(false);
+  };
+
+  const handleRejectPriority = () => {
+    setDetectedPriority(null);
+    setShowPriorityPreview(false);
   };
 
   const handleManualDateChange = (date: number | null) => {
@@ -113,7 +157,9 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
     // Reset all state when canceling
     setText('');
     setDetectedDate(null);
+    setDetectedPriority(null);
     setShowDatePreview(false);
+    setShowPriorityPreview(false);
     setManualDueDate(null);
     setPriority('none');
     setShowDatePicker(false);
@@ -157,33 +203,58 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 touch-manipulation"
             autoComplete="off"
             aria-label="Todo text"
-            aria-describedby={showDatePreview ? 'date-preview' : undefined}
+            aria-describedby={(showDatePreview || showPriorityPreview) ? 'preview-info' : undefined}
           />
           
-          {/* Date preview */}
-          {showDatePreview && detectedDate && !manualDueDate && (
+          {/* Date and Priority previews */}
+          {(showDatePreview || showPriorityPreview) && (
             <div
-              id="date-preview"
-              className="absolute top-full left-0 right-0 mt-1 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm z-10 shadow-md"
+              id="preview-info"
+              className="absolute top-full left-0 right-0 mt-1 space-y-1 z-10"
               role="status"
               aria-live="polite"
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-blue-700 font-medium flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span>Due: {detectedDate.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleRejectDate}
-                  className="text-blue-600 hover:text-blue-800 text-xs underline"
-                  aria-label="Remove detected due date"
-                >
-                  Remove
-                </button>
-              </div>
+              {/* Date preview */}
+              {showDatePreview && detectedDate && !manualDueDate && (
+                <div id="date-preview" className="p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm shadow-md">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-blue-700 font-medium flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>Due: {detectedDate.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRejectDate}
+                      className="text-blue-600 hover:text-blue-800 text-xs underline"
+                      aria-label="Remove detected due date"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Priority preview */}
+              {showPriorityPreview && detectedPriority && (
+                <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg text-sm shadow-md">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-purple-700 font-medium flex items-center gap-1">
+                      {priorityConfig[detectedPriority.priority].icon}
+                      <span>Priority: {priorityConfig[detectedPriority.priority].label}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRejectPriority}
+                      className="text-purple-600 hover:text-purple-800 text-xs underline"
+                      aria-label="Remove detected priority"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -244,6 +315,11 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
               value={priority}
               onChange={(newPriority) => {
                 setPriority(newPriority);
+                // Clear detected priority when user manually selects
+                if (newPriority !== 'none') {
+                  setDetectedPriority(null);
+                  setShowPriorityPreview(false);
+                }
                 setShowPrioritySelector(false); // Close selector after selection
               }}
               isMobile={window.innerWidth < 768}
