@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FloatingActionButton } from './components/FloatingActionButton';
 import { TodoList } from './components/TodoList';
-import { Sidebar, DateFilter, FilterStatus } from './components/Sidebar';
+import { Sidebar, DateFilter, FilterStatus, PriorityFilter } from './components/Sidebar';
 import { SearchModal } from './components/SearchModal';
 import { BurgerMenuButton } from './components/BurgerMenuButton';
 import { Backdrop } from './components/Backdrop';
@@ -30,6 +30,7 @@ function App() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [toastState, setToastState] = useState<ToastState | null>(null);
@@ -172,20 +173,25 @@ function App() {
     }
   }, [todos, updateTodo, addUndoAction]);
 
-  const handleUpdate = useCallback((id: string, text: string, dueDate?: number | null) => {
+  const handleUpdate = useCallback((id: string, text: string, dueDate?: number | null, priority?: 'none' | 'low' | 'medium' | 'high') => {
     const todo = todos.find((t) => t.id === id);
     if (todo) {
       const textChanged = text !== todo.text;
       const dateChanged = (dueDate ?? null) !== (todo.dueDate ?? null);
+      const priorityChanged = priority !== undefined && priority !== (todo.priority ?? 'none');
       
-      if (textChanged || dateChanged) {
+      if (textChanged || dateChanged || priorityChanged) {
         const previousText = todo.text;
-        updateTodo(id, { text, dueDate: dueDate ?? null });
+        const updates: Partial<typeof todo> = { text, dueDate: dueDate ?? null };
+        if (priority !== undefined) {
+          updates.priority = priority;
+        }
+        updateTodo(id, updates);
         
         // Create undo action
         const undoAction: UndoAction = {
           type: 'edit',
-          todo: { ...todo, text, dueDate: dueDate ?? null },
+          todo: { ...todo, ...updates },
           previousText,
         };
         
@@ -248,7 +254,7 @@ function App() {
     setToastState(null);
   }, []);
 
-  // Filter and sort todos based on search, filter status, and date filter
+  // Filter and sort todos based on search, filter status, date filter, and priority filter
   const filteredTodos = useMemo(() => {
     let filtered = todos;
 
@@ -295,25 +301,46 @@ function App() {
       });
     }
 
+    // Apply priority filter
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter((t) => (t.priority || 'none') === priorityFilter);
+    }
+
     // Apply search filter (debounced)
     if (debouncedSearchQuery) {
       filtered = filtered.filter((t) => filterTodosBySearch(t.text, debouncedSearchQuery));
     }
 
     return filtered;
-  }, [todos, filterStatus, dateFilter, debouncedSearchQuery]);
+  }, [todos, filterStatus, dateFilter, priorityFilter, debouncedSearchQuery]);
   
-  // Sort todos: by order field primarily, then incomplete first, then by creation date
+  // Sort todos: by priority (high to low), then by order field, then by completion status, then by creation date
   const sortedTodos = useMemo(() => {
+    const priorityWeight = {
+      high: 4,
+      medium: 3,
+      low: 2,
+      none: 1,
+    };
+    
     return [...filteredTodos].sort((a, b) => {
-      // First sort by order (ascending)
+      // First sort by priority (high to low to none)
+      const priorityA = priorityWeight[a.priority || 'none'];
+      const priorityB = priorityWeight[b.priority || 'none'];
+      if (priorityA !== priorityB) {
+        return priorityB - priorityA; // Higher priority first
+      }
+      
+      // Then sort by order (ascending)
       if (a.order !== b.order) {
         return a.order - b.order;
       }
+      
       // Then by completion status (incomplete first)
       if (a.completed !== b.completed) {
         return a.completed ? 1 : -1;
       }
+      
       // Finally by creation date (oldest first)
       return a.createdAt - b.createdAt;
     });
@@ -363,6 +390,8 @@ function App() {
         onDateFilterChange={setDateFilter}
         filterStatus={filterStatus}
         onFilterStatusChange={setFilterStatus}
+        priorityFilter={priorityFilter}
+        onPriorityFilterChange={setPriorityFilter}
         isPersistent={true}
       />
 

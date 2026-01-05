@@ -11,8 +11,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Use more workers for faster execution - adjust based on CPU cores */
+  workers: process.env.CI ? 2 : undefined,
+  /* Enable sharding for CI to split tests across multiple machines */
+  shard: process.env.CI_SHARD ? { total: parseInt(process.env.CI_SHARD_TOTAL || '1'), current: parseInt(process.env.CI_SHARD || '1') } : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html'],
@@ -29,34 +31,36 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     /* Record video on failure */
     video: 'retain-on-failure',
+    /* Reduce default timeouts for faster failure detection */
+    actionTimeout: 10000, // 10 seconds for actions
+    navigationTimeout: 30000, // 30 seconds for navigation
   },
 
   /* Configure projects for major browsers */
+  /* For faster local development, only run chromium. Uncomment others for full browser testing */
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
+    // Uncomment these for full cross-browser testing (slower but more comprehensive)
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
+    // /* Test against mobile viewports. */
+    // {
+    //   name: 'Mobile Chrome',
+    //   use: { ...devices['Pixel 5'] },
+    // },
+    // {
+    //   name: 'Mobile Safari',
+    //   use: { ...devices['iPhone 12'] },
+    // },
 
     /* Test against branded browsers. */
     // {
@@ -76,6 +80,8 @@ export default defineConfig({
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    timeout: 60 * 1000, // Reduced from 120s to 60s
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

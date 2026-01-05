@@ -133,7 +133,7 @@ export function useSync() {
         } else {
           // Conflict resolution: use server version if it's newer or equal
           if (serverTodo.updatedAt >= localTodo.updatedAt) {
-            // Use server version, but preserve local dueDate if server version doesn't have it
+            // Use server version, but preserve local dueDate and priority if server version doesn't have them
             // and timestamps are equal (meaning no actual update happened on server)
             const mergedTodo = {
               ...serverTodo,
@@ -145,6 +145,16 @@ export function useSync() {
               dueDate: (serverTodo.dueDate == null && localTodo.dueDate != null && serverTodo.updatedAt === localTodo.updatedAt)
                 ? localTodo.dueDate
                 : serverTodo.dueDate,
+              // Preserve local priority if:
+              // 1. Server has 'none' or undefined for priority
+              // 2. Local has a non-'none' priority value
+              // 3. Timestamps are equal (no actual server update happened)
+              // This prevents losing priority when server sync returns stale data
+              priority: (serverTodo.updatedAt === localTodo.updatedAt && 
+                         (serverTodo.priority === 'none' || !serverTodo.priority) && 
+                         localTodo.priority && localTodo.priority !== 'none')
+                ? localTodo.priority
+                : (serverTodo.priority ?? 'none'),
             };
             merged.set(serverTodo.id, mergedTodo);
             if (serverTodo.updatedAt > localTodo.updatedAt) {
@@ -252,6 +262,7 @@ export function useSync() {
         text: item.text,
         completed: item.completed,
         order: item.order ?? 0,
+        priority: item.priority ?? 'none',
         dueDate: item.due_date ?? item.dueDate ?? null,
         createdAt: item.created_at ?? item.createdAt,
         updatedAt: item.updated_at ?? item.updatedAt,
@@ -456,7 +467,7 @@ export function useSync() {
     }
   }, [todos, isSyncing, wsConnected, setTodos, setSyncQueue, setLastSyncTime]);
 
-  const addTodo = useCallback((text: string, dueDate?: number | null) => {
+  const addTodo = useCallback((text: string, dueDate?: number | null, priority: 'none' | 'low' | 'medium' | 'high' = 'none') => {
     const now = Date.now();
     
     // Get the max order from existing todos to append at the end
@@ -467,6 +478,7 @@ export function useSync() {
       text,
       completed: false,
       order: maxOrder + 1,
+      priority,
       dueDate: dueDate || null,
       createdAt: now,
       updatedAt: now,
@@ -537,6 +549,7 @@ export function useSync() {
             text: updated.text,
             completed: updated.completed,
             order: updated.order,
+            priority: updated.priority,
             due_date: updated.dueDate,
             createdAt: updated.createdAt,
             updatedAt: updated.updatedAt,
@@ -580,6 +593,7 @@ export function useSync() {
           text: todoToDelete.text,
           completed: todoToDelete.completed,
           order: todoToDelete.order,
+          priority: todoToDelete.priority,
           createdAt: todoToDelete.createdAt,
           updatedAt: todoToDelete.updatedAt,
         },

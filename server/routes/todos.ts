@@ -18,6 +18,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
         text: todo.text,
         completed: todo.completed,
         order: todo.order,
+        priority: todo.priority,
         due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
         created_at: new Date(todo.created_at).getTime(),
         updated_at: new Date(todo.updated_at).getTime(),
@@ -56,6 +57,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
           text: todo.text,
           completed: todo.completed,
           order: todo.order,
+          priority: todo.priority,
           due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
           created_at: new Date(todo.created_at).getTime(),
           updated_at: new Date(todo.updated_at).getTime(),
@@ -125,6 +127,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
         text: todo.text,
         completed: todo.completed,
         order: todo.order,
+        priority: todo.priority,
         due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
         created_at: new Date(todo.created_at).getTime(),
         updated_at: new Date(todo.updated_at).getTime(),
@@ -169,13 +172,13 @@ export async function todoRoutes(fastify: FastifyInstance) {
   });
 
   // Update single todo
-  fastify.put<{ Params: { id: string }; Body: { text: string; completed: boolean; order?: number; due_date?: number | null } }>(
+  fastify.put<{ Params: { id: string }; Body: { text: string; completed: boolean; order?: number; priority?: 'none' | 'low' | 'medium' | 'high'; due_date?: number | null } }>(
     '/todos/:id',
     { preHandler: authenticate },
     async (request, reply) => {
       const userId = request.user.userId;
       const { id } = request.params;
-      const { text, completed, order, due_date } = request.body;
+      const { text, completed, order, priority, due_date } = request.body;
       const correlationId = randomUUID();
       const syncMethod = 'http';
 
@@ -196,7 +199,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
         timestamp: new Date().toISOString(),
       }, '[HTTP_SYNC] Update request received');
 
-      const todo = await todoQueries.update(id, userId, text, completed, order, due_date);
+      const todo = await todoQueries.update(id, userId, text, completed, order, due_date, priority);
       if (!todo) {
         return reply.code(404).send({ error: 'Todo not found' });
       }
@@ -206,6 +209,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
         text: todo.text,
         completed: todo.completed,
         order: todo.order,
+        priority: todo.priority,
         due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
         created_at: new Date(todo.created_at).getTime(),
         updated_at: new Date(todo.updated_at).getTime(),

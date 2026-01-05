@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { AddTodoExpanded } from './AddTodoExpanded';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { Priority } from './PrioritySelector';
 
 interface FloatingActionButtonProps {
-  onAdd: (text: string, dueDate?: number | null) => void;
+  onAdd: (text: string, dueDate?: number | null, priority?: Priority) => void;
 }
 
 export function FloatingActionButton({ onAdd }: FloatingActionButtonProps) {
@@ -73,8 +74,8 @@ export function FloatingActionButton({ onAdd }: FloatingActionButtonProps) {
     setIsExpanded(true);
   };
 
-  const handleAdd = (text: string, dueDate?: number | null) => {
-    onAdd(text, dueDate);
+  const handleAdd = (text: string, dueDate?: number | null, priority?: Priority) => {
+    onAdd(text, dueDate, priority);
     setIsExpanded(false);
   };
 

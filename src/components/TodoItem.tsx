@@ -8,13 +8,15 @@ import { DragHandle } from './DragHandle';
 import { ReorderButtons } from './ReorderButtons';
 import { DueDateIndicator } from './DueDateIndicator';
 import { DatePicker } from './DatePicker';
+import { PrioritySelector, Priority, priorityConfig } from './PrioritySelector';
 import { parseDateFromText } from '../utils/dateParser';
+import { parsePriorityFromText } from '../utils/priorityParser';
 
 interface TodoItemProps {
   todo: Todo;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, text: string, dueDate?: number | null) => void;
+  onUpdate: (id: string, text: string, dueDate?: number | null, priority?: Priority) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   canMoveUp: boolean;
@@ -26,9 +28,13 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showPrioritySelector, setShowPrioritySelector] = useState(false);
   const [editDueDate, setEditDueDate] = useState<number | null>(todo.dueDate || null);
+  const [editPriority, setEditPriority] = useState<Priority>(todo.priority || 'none');
   const [detectedDate, setDetectedDate] = useState<{ date: Date; dateText: string } | null>(null);
+  const [detectedPriority, setDetectedPriority] = useState<{ priority: Priority; priorityText: string } | null>(null);
   const [showDatePreview, setShowDatePreview] = useState(false);
+  const [showPriorityPreview, setShowPriorityPreview] = useState(false);
   const [announcement, setAnnouncement] = useState<string>('');
   const [isNew, setIsNew] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,13 +65,14 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     }
   }, [todo.createdAt]);
 
-  // Update editText and editDueDate when todo changes externally (e.g., from sync)
+  // Update editText, editDueDate, and editPriority when todo changes externally (e.g., from sync)
   useEffect(() => {
     if (!isEditing) {
       setEditText(todo.text);
       setEditDueDate(todo.dueDate || null);
+      setEditPriority(todo.priority || 'none');
     }
-  }, [todo.text, todo.dueDate, isEditing]);
+  }, [todo.text, todo.dueDate, todo.priority, isEditing]);
 
   // Detect dates in the text as user types (only when editing and no manual date picker is set)
   useEffect(() => {
@@ -85,6 +92,32 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     }
   }, [editText, isEditing, showDatePicker]);
 
+  // Detect priority in the text as user types (only when editing and no manual priority selector is set)
+  useEffect(() => {
+    if (isEditing && editText.trim() && !showPrioritySelector && editPriority === (todo.priority || 'none')) {
+      const result = parsePriorityFromText(editText);
+      if (result.parsedPriority) {
+        setDetectedPriority(result.parsedPriority);
+        setShowPriorityPreview(true);
+      } else {
+        setDetectedPriority(null);
+        setShowPriorityPreview(false);
+      }
+    } else {
+      // Clear when not editing or priority selector is open
+      setDetectedPriority(null);
+      setShowPriorityPreview(false);
+    }
+  }, [editText, isEditing, showPrioritySelector, editPriority, todo.priority]);
+
+  // Update priority state when detected priority changes (for button display)
+  // Only auto-set if priority matches the original (user hasn't manually changed it)
+  useEffect(() => {
+    if (detectedPriority && editPriority === (todo.priority || 'none')) {
+      setEditPriority(detectedPriority.priority);
+    }
+  }, [detectedPriority, editPriority, todo.priority]);
+
   // Focus input when entering edit mode
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -101,6 +134,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   const handleStartEdit = () => {
     setEditText(todo.text);
     setEditDueDate(todo.dueDate || null);
+    setEditPriority(todo.priority || 'none');
     setIsEditing(true);
   };
 
@@ -111,16 +145,20 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       // Invalid text, just close editing
       setIsEditing(false);
       setShowDatePicker(false);
+      setShowPrioritySelector(false);
       setDetectedDate(null);
       setShowDatePreview(false);
       return;
     }
     
-    // Always parse for dates in the text (most reliable)
+    // Always parse for dates and priority in the text (most reliable)
     const dateParseResult = parseDateFromText(trimmedText);
+    let textAfterDate = dateParseResult.cleanedText;
+    const priorityParseResult = parsePriorityFromText(textAfterDate);
     
     let finalText = trimmedText;
     let finalDueDate: number | null = null;
+    let finalPriority: Priority = editPriority;
 
     // Priority: detected date from text > manual date picker (if changed) > existing date
     if (dateParseResult.parsedDate) {
@@ -141,32 +179,66 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       finalDueDate = todo.dueDate ?? null;
     }
 
+    // Priority: detected priority from text > manual priority selector (if changed) > existing priority
+    if (priorityParseResult.parsedPriority && editPriority === (todo.priority || 'none')) {
+      // Priority detected in text - use it and remove from text
+      finalText = priorityParseResult.cleanedText.trim();
+      finalPriority = priorityParseResult.parsedPriority.priority;
+      
+      // Ensure cleaned text is still valid
+      if (finalText.length < MIN_TODO_LENGTH) {
+        // If cleaning removed too much, keep original text but still apply priority
+        finalText = trimmedText;
+      }
+    } else if (editPriority !== (todo.priority || 'none')) {
+      // Manual priority selector was changed from original
+      finalPriority = editPriority;
+    } else {
+      // No changes to priority, keep existing
+      finalPriority = todo.priority || 'none';
+    }
+
     // Check if there are actual changes (using final cleaned text)
     const textChanged = finalText !== todo.text;
     const dateChanged = (finalDueDate ?? null) !== (todo.dueDate ?? null);
+    const priorityChanged = finalPriority !== (todo.priority || 'none');
     
-    // Always save if a date was detected from text, even if text is the same
-    // This ensures dates are always applied when mentioned in the text
+    // Always save if a date or priority was detected from text, even if text is the same
+    // This ensures dates and priorities are always applied when mentioned in the text
     const dateWasDetected = dateParseResult.parsedDate !== null;
+    const priorityWasDetected = priorityParseResult.parsedPriority !== null;
     
-    // Save if there are any changes (text or date) OR if a date was detected
-    if (textChanged || dateChanged || dateWasDetected) {
-      onUpdate(todo.id, finalText, finalDueDate);
+    // Save if there are any changes (text, date, or priority) OR if a date/priority was detected
+    if (textChanged || dateChanged || priorityChanged || dateWasDetected || priorityWasDetected) {
+      onUpdate(todo.id, finalText, finalDueDate, finalPriority);
     }
     
     setIsEditing(false);
     setShowDatePicker(false);
+    setShowPrioritySelector(false);
     setDetectedDate(null);
+    setDetectedPriority(null);
     setShowDatePreview(false);
+    setShowPriorityPreview(false);
   };
 
   const handleCancel = () => {
     setEditText(todo.text);
     setEditDueDate(todo.dueDate || null);
+    setEditPriority(todo.priority || 'none');
     setIsEditing(false);
     setShowDatePicker(false);
+    setShowPrioritySelector(false);
     setDetectedDate(null);
+    setDetectedPriority(null);
     setShowDatePreview(false);
+    setShowPriorityPreview(false);
+  };
+
+  const handleRejectPriority = () => {
+    setDetectedPriority(null);
+    setShowPriorityPreview(false);
+    setEditPriority(todo.priority || 'none');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -203,36 +275,61 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
                 maxLength={MAX_TODO_LENGTH}
                 className="w-full text-base text-gray-800 bg-transparent border-none outline-none px-0"
                 aria-label="Edit todo text"
-                aria-describedby={showDatePreview ? 'edit-date-preview' : undefined}
+                aria-describedby={(showDatePreview || showPriorityPreview) ? 'edit-preview-info' : undefined}
               />
               
-              {/* Date preview */}
-              {showDatePreview && detectedDate && !showDatePicker && (
+              {/* Date and Priority previews */}
+              {(showDatePreview || showPriorityPreview) && (
                 <div
-                  id="edit-date-preview"
-                  className="absolute top-full left-0 right-0 mt-1 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm z-50 shadow-md"
+                  id="edit-preview-info"
+                  className="absolute top-full left-0 right-0 mt-1 space-y-1 z-50"
                   role="status"
                   aria-live="polite"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-blue-700 font-medium flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                        <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span>Due: {detectedDate.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDetectedDate(null);
-                        setShowDatePreview(false);
-                      }}
-                      className="text-blue-600 hover:text-blue-800 text-xs underline"
-                      aria-label="Remove detected due date"
-                    >
-                      Remove
-                    </button>
-                  </div>
+                  {/* Date preview */}
+                  {showDatePreview && detectedDate && !showDatePicker && (
+                    <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm shadow-md">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-blue-700 font-medium flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                            <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span>Due: {detectedDate.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDetectedDate(null);
+                            setShowDatePreview(false);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-xs underline"
+                          aria-label="Remove detected due date"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Priority preview */}
+                  {showPriorityPreview && detectedPriority && !showPrioritySelector && editPriority === (todo.priority || 'none') && (
+                    <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg text-sm shadow-md">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-purple-700 font-medium flex items-center gap-1">
+                          {priorityConfig[detectedPriority.priority].icon}
+                          <span>Priority: {priorityConfig[detectedPriority.priority].label}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleRejectPriority}
+                          className="text-purple-600 hover:text-purple-800 text-xs underline"
+                          aria-label="Remove detected priority"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -244,6 +341,16 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
             >
               <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                 <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowPrioritySelector(!showPrioritySelector)}
+              className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:text-primary-500 hover:bg-primary-50 transition-all duration-200 touch-manipulation"
+              aria-label="Set priority"
+              title="Set priority"
+            >
+              <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
               </svg>
             </button>
             <button
@@ -282,6 +389,25 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
           </button>
           </div>
           
+          {/* Priority selector */}
+          {showPrioritySelector && (
+            <div className="mt-2">
+              <PrioritySelector
+                value={editPriority}
+                onChange={(newPriority) => {
+                  setEditPriority(newPriority);
+                  // Clear detected priority when user manually selects
+                  if (newPriority !== (todo.priority || 'none')) {
+                    setDetectedPriority(null);
+                    setShowPriorityPreview(false);
+                  }
+                  setShowPrioritySelector(false); // Close selector after selection
+                }}
+                isMobile={window.innerWidth < 768}
+              />
+            </div>
+          )}
+          
           {/* Date picker */}
           {showDatePicker && (
             <div className="mt-2">
@@ -296,6 +422,25 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       </>
     );
   }
+
+  // Get checkbox border color based on priority
+  const getCheckboxBorderClass = () => {
+    if (todo.completed) {
+      return 'bg-primary-500 border-primary-500';
+    }
+    
+    const priority = todo.priority || 'none';
+    switch (priority) {
+      case 'low':
+        return 'border-green-500 hover:border-green-600';
+      case 'medium':
+        return 'border-amber-500 hover:border-amber-600';
+      case 'high':
+        return 'border-red-500 hover:border-red-600';
+      default:
+        return 'border-gray-300 hover:border-primary-400';
+    }
+  };
 
   return (
     <div 
@@ -322,11 +467,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       
       <button
         onClick={() => onToggle(todo.id)}
-        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
-          todo.completed
-            ? 'bg-primary-500 border-primary-500'
-            : 'border-gray-300 hover:border-primary-400'
-        }`}
+        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${getCheckboxBorderClass()}`}
         aria-label={todo.completed ? 'Mark as incomplete' : 'Mark as complete'}
       >
         {todo.completed && (
@@ -367,11 +508,9 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
             todo.text
           )}
         </span>
-        {todo.dueDate && (
-          <div className="flex items-center">
-            <DueDateIndicator dueDate={todo.dueDate} />
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {todo.dueDate && <DueDateIndicator dueDate={todo.dueDate} />}
+        </div>
       </div>
       <button
         onClick={handleStartEdit}

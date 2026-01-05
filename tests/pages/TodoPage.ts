@@ -75,11 +75,12 @@ export class TodoPage extends BasePage {
     await this.waitForAddTodoForm();
     await this.fillTodoText(text);
     await this.submitTodo();
-    // Wait a bit for the todo to be added and form to close
-    await this.page.waitForTimeout(500);
     
-    // Wait for FAB to be visible again (form closed)
-    await this.page.waitForSelector('button[aria-label="Add new todo"]', { timeout: 5000 }).catch(() => {
+    // Wait for form to close (FAB to reappear) instead of fixed timeout
+    await this.page.waitForSelector('button[aria-label="Add new todo"]', { 
+      state: 'visible',
+      timeout: 5000 
+    }).catch(() => {
       // FAB might already be visible, that's okay
     });
   }
@@ -120,8 +121,8 @@ export class TodoPage extends BasePage {
     // Use aria-label to target the toggle button specifically (not the reorder buttons)
     const toggleButton = todo.locator('button[aria-label*="Mark as"]');
     await toggleButton.click();
-    // Wait for animation and reordering
-    await this.page.waitForTimeout(500);
+    // Wait for the todo state to change (completed class to appear/disappear)
+    await this.page.waitForTimeout(100); // Minimal wait for state update
   }
 
   /**

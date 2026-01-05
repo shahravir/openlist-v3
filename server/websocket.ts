@@ -212,12 +212,13 @@ export function setupWebSocket(fastify: FastifyInstance): void {
           // Process command
           try {
             if (command.type === 'todo:create') {
-              const { id, text, completed, order, due_date, created_at, updated_at } = command.payload;
+              const { id, text, completed, order, due_date, priority, created_at, updated_at } = command.payload;
               await todoQueries.bulkUpsert(userId, [{
                 id,
                 text,
                 completed,
                 order: order ?? 0,
+                priority: priority ?? 'none',
                 due_date,
                 created_at,
                 updated_at,
@@ -229,6 +230,7 @@ export function setupWebSocket(fastify: FastifyInstance): void {
                 text: todo.text,
                 completed: todo.completed,
                 order: todo.order,
+                priority: todo.priority,
                 due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
                 created_at: new Date(todo.created_at).getTime(),
                 updated_at: new Date(todo.updated_at).getTime(),
@@ -255,8 +257,8 @@ export function setupWebSocket(fastify: FastifyInstance): void {
                 }, '[WEBSOCKET] Create completed');
               }
             } else if (command.type === 'todo:update') {
-              const { id, text, completed, order, due_date } = command.payload;
-              const todo = await todoQueries.update(id, userId, text, completed, order, due_date);
+              const { id, text, completed, order, due_date, priority } = command.payload;
+              const todo = await todoQueries.update(id, userId, text, completed, order, due_date, priority);
               
               if (todo) {
                 const allTodos = await todoQueries.findByUserId(userId);
@@ -265,6 +267,7 @@ export function setupWebSocket(fastify: FastifyInstance): void {
                   text: t.text,
                   completed: t.completed,
                   order: t.order,
+                  priority: t.priority,
                   due_date: t.due_date ? new Date(t.due_date).getTime() : null,
                   created_at: new Date(t.created_at).getTime(),
                   updated_at: new Date(t.updated_at).getTime(),

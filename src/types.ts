@@ -3,6 +3,7 @@ export interface Todo {
   text: string;
   completed: boolean;
   order: number;
+  priority: 'none' | 'low' | 'medium' | 'high';
   dueDate?: number | null;
   createdAt: number;
   updatedAt: number;
