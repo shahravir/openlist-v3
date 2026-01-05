@@ -162,8 +162,7 @@ export class TodoPage extends BasePage {
     const isMobile = viewport && viewport.width < 768; // md breakpoint
     
     if (!isMobile) {
-      // On desktop, hover to show delet
-      // e button
+      // On desktop, hover to show delete button
       await todo.hover();
     }
     
