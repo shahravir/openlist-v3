@@ -181,7 +181,6 @@ function App() {
       
       if (textChanged || dateChanged) {
         const previousText = todo.text;
-        const previousDueDate = todo.dueDate;
         updateTodo(id, { text, dueDate: dueDate ?? null });
         
         // Create undo action

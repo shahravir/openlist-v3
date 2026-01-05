@@ -399,17 +399,9 @@ export function useSync() {
         duration: `${syncDuration}ms`,
       });
 
-      // Server returns the merged state, so we can directly use it
-      // But we need to ensure format matches our Todo type
-      const mergedTodos: Todo[] = syncedTodos.map((todo) => ({
-        id: todo.id,
-        text: todo.text,
-        completed: todo.completed,
-        order: todo.order,
-        dueDate: todo.dueDate ?? todo.due_date ?? null,
-        createdAt: todo.createdAt,
-        updatedAt: todo.updatedAt,
-      }));
+      // Server returns the merged state, already converted to Todo format by apiClient
+      // The apiClient.syncTodos() already converts due_date to dueDate
+      const mergedTodos: Todo[] = syncedTodos;
 
       // Only update if we got todos back, or if we had todos to sync
       // This prevents overwriting with empty response

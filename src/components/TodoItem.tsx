@@ -104,28 +104,6 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     setIsEditing(true);
   };
 
-  const validateAndSave = (text: string): boolean => {
-    const trimmedText = text.trim();
-    const textChanged = trimmedText !== todo.text;
-    
-    // Check if date changed: detected date, manual date picker, or removed
-    let dateChanged = false;
-    if (detectedDate) {
-      // Date detected from text - check if it's different from current
-      const detectedDateTimestamp = detectedDate.date.getTime();
-      dateChanged = detectedDateTimestamp !== (todo.dueDate ?? null);
-    } else if (editDueDate !== (todo.dueDate ?? null)) {
-      // Manual date picker was changed
-      dateChanged = true;
-    }
-    
-    return (
-      trimmedText.length >= MIN_TODO_LENGTH &&
-      trimmedText.length <= MAX_TODO_LENGTH &&
-      (textChanged || dateChanged)
-    );
-  };
-
   const handleSave = () => {
     const trimmedText = editText.trim();
     
