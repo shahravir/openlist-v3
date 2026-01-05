@@ -40,7 +40,7 @@ const priorityConfig = {
   },
 };
 
-export function PriorityIndicator({ priority, compact = false }: PriorityIndicatorProps) {
+export function PriorityIndicator({ priority }: PriorityIndicatorProps) {
   // Don't show indicator for 'none' priority
   if (priority === 'none') {
     return null;
