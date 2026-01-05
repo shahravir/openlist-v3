@@ -54,7 +54,7 @@ export function parseDateFromText(text: string): DateParseResult {
   const months = [
     'january', 'february', 'march', 'april', 'may', 'june',
     'july', 'august', 'september', 'october', 'november', 'december',
-    'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+    'jan', 'feb', 'mar', 'apr', 'jun',
     'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
   ];
   const monthsPattern = months.join('|');
