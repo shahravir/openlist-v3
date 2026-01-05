@@ -407,15 +407,30 @@ export class TodoPage extends BasePage {
   }
 
   async selectFilter(filter: 'All' | 'Active' | 'Completed') {
-    // Target the filter menu button specifically (not the sidebar date filter)
-    // The filter menu buttons are within a div with role="group" and aria-label="Filter todos by status"
-    const filterGroup = this.page.locator('[role="group"][aria-label="Filter todos by status"]');
-    const filterButton = filterGroup.locator(`button:has-text("${filter}")`);
+    // Filters are now in the sidebar - open sidebar if needed (on mobile)
+    const sidebarOpen = await this.isSidebarOpen();
+    if (!sidebarOpen) {
+      await this.openSidebar();
+    }
+    
+    // Map filter names to aria-labels
+    const ariaLabels: Record<string, string> = {
+      'All': 'Show all todos',
+      'Active': 'Show active todos',
+      'Completed': 'Show completed todos'
+    };
+    
+    // Find the filter button in the sidebar by aria-label
+    const filterButton = this.page.locator(`[role="navigation"] button[aria-label="${ariaLabels[filter]}"]`);
+    await filterButton.waitFor({ state: 'visible', timeout: 5000 });
     await filterButton.click();
+    
     // Wait for filter button to show active state (indicates filter has been applied)
     await expect(filterButton).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 });
+    
     // Wait for filter to apply and UI to update
     await this.page.waitForTimeout(500);
+    
     // Wait for todos to be visible/updated (or empty state if no todos match)
     try {
       await this.page.waitForSelector('.group.flex.items-center.gap-3.px-4.py-3.bg-white.rounded-lg, text=No tasks yet', { 

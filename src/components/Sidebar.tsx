@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 export type DateFilter = 'all' | 'overdue' | 'today' | 'week' | 'upcoming' | 'no-date';
+export type FilterStatus = 'all' | 'active' | 'completed';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -8,10 +9,12 @@ interface SidebarProps {
   onOpenSearch: () => void;
   dateFilter?: DateFilter;
   onDateFilterChange?: (filter: DateFilter) => void;
+  filterStatus?: FilterStatus;
+  onFilterStatusChange?: (status: FilterStatus) => void;
   isPersistent?: boolean; // For desktop persistent sidebar
 }
 
-export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onDateFilterChange, isPersistent = false }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onDateFilterChange, filterStatus = 'all', onFilterStatusChange, isPersistent = false }: SidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -123,6 +126,64 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
             <span className="text-gray-700 font-medium">Search</span>
             <span className="ml-auto text-xs text-gray-500">Ctrl+K</span>
           </button>
+
+          {/* Status Filters */}
+          {onFilterStatusChange && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2">
+                Status
+              </h3>
+              <div className="space-y-1">
+                <button
+                  onClick={() => onFilterStatusChange('all')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    filterStatus === 'all'
+                      ? 'bg-primary-50 text-primary-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show all todos"
+                  aria-pressed={filterStatus === 'all'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  <span>All</span>
+                </button>
+                
+                <button
+                  onClick={() => onFilterStatusChange('active')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    filterStatus === 'active'
+                      ? 'bg-blue-50 text-blue-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show active todos"
+                  aria-pressed={filterStatus === 'active'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Active</span>
+                </button>
+                
+                <button
+                  onClick={() => onFilterStatusChange('completed')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    filterStatus === 'completed'
+                      ? 'bg-green-50 text-green-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show completed todos"
+                  aria-pressed={filterStatus === 'completed'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Completed</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Date Filters */}
           {onDateFilterChange && (

@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FloatingActionButton } from './components/FloatingActionButton';
 import { TodoList } from './components/TodoList';
-import { FilterMenu, FilterStatus } from './components/FilterMenu';
-import { Sidebar, DateFilter } from './components/Sidebar';
+import { Sidebar, DateFilter, FilterStatus } from './components/Sidebar';
 import { SearchModal } from './components/SearchModal';
 import { BurgerMenuButton } from './components/BurgerMenuButton';
 import { Backdrop } from './components/Backdrop';
@@ -362,6 +361,8 @@ function App() {
         onOpenSearch={openSearchModal}
         dateFilter={dateFilter}
         onDateFilterChange={setDateFilter}
+        filterStatus={filterStatus}
+        onFilterStatusChange={setFilterStatus}
         isPersistent={true}
       />
 
@@ -418,16 +419,6 @@ function App() {
                 <p className="text-sm sm:text-base text-gray-500 mb-4">
                   {completedCount} of {totalCount} completed
                 </p>
-              </div>
-            )}
-
-            {/* Filter - Search removed from main view */}
-            {totalCount > 0 && (
-              <div className="space-y-3 mb-6 lg:ml-0 ml-14 sm:ml-[60px]">
-                <FilterMenu
-                  value={filterStatus}
-                  onChange={setFilterStatus}
-                />
               </div>
             )}
           </header>
