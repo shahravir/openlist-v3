@@ -9,7 +9,6 @@ import { ReorderButtons } from './ReorderButtons';
 import { DueDateIndicator } from './DueDateIndicator';
 import { DatePicker } from './DatePicker';
 import { PrioritySelector, Priority } from './PrioritySelector';
-import { PriorityIndicator } from './PriorityIndicator';
 import { parseDateFromText } from '../utils/dateParser';
 
 interface TodoItemProps {
@@ -419,7 +418,6 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
         </span>
         <div className="flex items-center gap-2 flex-wrap">
           {todo.dueDate && <DueDateIndicator dueDate={todo.dueDate} />}
-          {todo.priority && todo.priority !== 'none' && <PriorityIndicator priority={todo.priority} />}
         </div>
       </div>
       <button

@@ -8,7 +8,7 @@ interface PrioritySelectorProps {
   isMobile?: boolean;
 }
 
-const priorityConfig = {
+export const priorityConfig = {
   none: {
     label: 'None',
     color: 'bg-gray-100 text-gray-700 border-gray-200',
@@ -104,7 +104,7 @@ export function PrioritySelector({ value, onChange, isMobile = false }: Priority
         role="group"
         aria-label="Priority selector"
       >
-        {(Object.keys(priorityConfig) as Priority[]).map((priority) => {
+        {(['low', 'medium', 'high'] as Priority[]).map((priority) => {
           const config = priorityConfig[priority];
           const isActive = value === priority;
           return (
@@ -112,18 +112,18 @@ export function PrioritySelector({ value, onChange, isMobile = false }: Priority
               key={priority}
               onClick={() => handlePriorityChange(priority)}
               className={`
-                min-w-[44px] min-h-[44px] px-3 py-2 rounded-lg text-sm font-medium
+                min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg
                 border transition-all duration-200 touch-manipulation
-                flex items-center gap-1.5
+                flex items-center justify-center
                 ${isActive ? config.activeColor : config.color}
                 hover:shadow-sm
                 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2
               `}
               aria-label={`Set priority to ${config.label.toLowerCase()}`}
               aria-pressed={isActive}
+              title={config.label}
             >
               {config.icon}
-              <span>{config.label}</span>
             </button>
           );
         })}

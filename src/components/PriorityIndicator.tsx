@@ -51,13 +51,13 @@ export function PriorityIndicator({ priority, compact = false }: PriorityIndicat
   return (
     <span
       className={`
-        inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+        inline-flex items-center justify-center w-5 h-5 rounded-full
         ${config.color}
       `}
       aria-label={`Priority: ${config.label}`}
+      title={config.label}
     >
       {config.icon}
-      {!compact && <span>{config.label}</span>}
     </span>
   );
 }
