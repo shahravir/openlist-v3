@@ -21,7 +21,6 @@ export interface DateParseResult {
  * - Common formats: Jan 26, January 26, 26 Jan, 26 January
  */
 export function parseDateFromText(text: string): DateParseResult {
-  const lowerText = text.toLowerCase();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

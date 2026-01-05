@@ -15,7 +15,6 @@ import { RegisterForm } from './components/Auth/RegisterForm';
 import { SyncStatus } from './components/SyncStatus';
 import { filterTodosBySearch, debounce } from './utils/searchUtils';
 import { SEARCH_DEBOUNCE_DELAY_MS } from './utils/constants';
-import { Todo } from './types';
 
 type AuthView = 'login' | 'register';
 

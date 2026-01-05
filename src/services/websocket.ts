@@ -17,6 +17,7 @@ interface Command {
     text?: string;
     completed?: boolean;
     order?: number;
+    due_date?: number | null;
     createdAt: number;
     updatedAt: number;
   };
