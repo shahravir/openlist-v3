@@ -38,7 +38,7 @@ export const todoQueries = {
     return result.rows[0] || null;
   },
 
-  async create(userId: string, text: string, completed: boolean = false, order?: number, dueDate?: number | null): Promise<Todo> {
+  async create(userId: string, text: string, completed: boolean = false, order?: number, dueDate?: number | null, priority: 'none' | 'low' | 'medium' | 'high' = 'none'): Promise<Todo> {
     // If order is not provided, set it to be after all existing todos
     if (order === undefined) {
       const maxOrderResult = await pool.query(
@@ -49,19 +49,25 @@ export const todoQueries = {
     }
     
     const result = await pool.query(
-      'INSERT INTO todos (user_id, text, completed, "order", due_date) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [userId, text, completed, order, dueDate ? new Date(dueDate) : null]
+      'INSERT INTO todos (user_id, text, completed, "order", due_date, priority) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [userId, text, completed, order, dueDate ? new Date(dueDate) : null, priority]
     );
     return result.rows[0];
   },
 
-  async update(id: string, userId: string, text: string, completed: boolean, order?: number, dueDate?: number | null): Promise<Todo | null> {
+  async update(id: string, userId: string, text: string, completed: boolean, order?: number, dueDate?: number | null, priority?: 'none' | 'low' | 'medium' | 'high'): Promise<Todo | null> {
     let query: string;
     let params: any[];
     
-    if (order !== undefined) {
+    if (order !== undefined && priority !== undefined) {
+      query = 'UPDATE todos SET text = $1, completed = $2, "order" = $3, due_date = $4, priority = $5 WHERE id = $6 AND user_id = $7 RETURNING *';
+      params = [text, completed, order, dueDate ? new Date(dueDate) : null, priority, id, userId];
+    } else if (order !== undefined) {
       query = 'UPDATE todos SET text = $1, completed = $2, "order" = $3, due_date = $4 WHERE id = $5 AND user_id = $6 RETURNING *';
       params = [text, completed, order, dueDate ? new Date(dueDate) : null, id, userId];
+    } else if (priority !== undefined) {
+      query = 'UPDATE todos SET text = $1, completed = $2, due_date = $3, priority = $4 WHERE id = $5 AND user_id = $6 RETURNING *';
+      params = [text, completed, dueDate ? new Date(dueDate) : null, priority, id, userId];
     } else {
       query = 'UPDATE todos SET text = $1, completed = $2, due_date = $3 WHERE id = $4 AND user_id = $5 RETURNING *';
       params = [text, completed, dueDate ? new Date(dueDate) : null, id, userId];
@@ -79,7 +85,7 @@ export const todoQueries = {
     return (result.rowCount ?? 0) > 0;
   },
 
-  async bulkUpsert(userId: string, todos: Array<{ id: string; text: string; completed: boolean; order: number; due_date?: number | null; created_at: number; updated_at: number }>): Promise<Todo[]> {
+  async bulkUpsert(userId: string, todos: Array<{ id: string; text: string; completed: boolean; order: number; priority?: 'none' | 'low' | 'medium' | 'high'; due_date?: number | null; created_at: number; updated_at: number }>): Promise<Todo[]> {
     if (todos.length === 0) {
       return [];
     }
@@ -117,10 +123,10 @@ export const todoQueries = {
             if (todo.updated_at >= existingUpdatedAt) {
               const result = await client.query(
                 `UPDATE todos 
-                 SET text = $1, completed = $2, "order" = $3, due_date = $4, updated_at = to_timestamp($5 / 1000.0)
-                 WHERE id = $6 AND user_id = $7
+                 SET text = $1, completed = $2, "order" = $3, due_date = $4, priority = $5, updated_at = to_timestamp($6 / 1000.0)
+                 WHERE id = $7 AND user_id = $8
                  RETURNING *`,
-                [todo.text, todo.completed, todo.order, todo.due_date ? new Date(todo.due_date) : null, todo.updated_at, todo.id, userId]
+                [todo.text, todo.completed, todo.order, todo.due_date ? new Date(todo.due_date) : null, todo.priority || 'none', todo.updated_at, todo.id, userId]
               );
               if (result.rows[0]) {
                 results.push(result.rows[0]);
@@ -135,11 +141,11 @@ export const todoQueries = {
             // If conflict occurs and todo belongs to different user, do nothing (skip it)
             try {
               const result = await client.query(
-                `INSERT INTO todos (id, user_id, text, completed, "order", due_date, created_at, updated_at)
-                 VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, to_timestamp($7 / 1000.0), to_timestamp($8 / 1000.0))
+                `INSERT INTO todos (id, user_id, text, completed, "order", due_date, priority, created_at, updated_at)
+                 VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, to_timestamp($8 / 1000.0), to_timestamp($9 / 1000.0))
                  ON CONFLICT (id) DO NOTHING
                  RETURNING *`,
-                [todo.id, userId, todo.text, todo.completed, todo.order, todo.due_date ? new Date(todo.due_date) : null, todo.created_at, todo.updated_at]
+                [todo.id, userId, todo.text, todo.completed, todo.order, todo.due_date ? new Date(todo.due_date) : null, todo.priority || 'none', todo.created_at, todo.updated_at]
               );
               
               // If insert succeeded (no conflict), add to results
@@ -156,10 +162,10 @@ export const todoQueries = {
                   // It belongs to this user, update it
                   const updateResult = await client.query(
                     `UPDATE todos 
-                     SET text = $1, completed = $2, "order" = $3, due_date = $4, updated_at = to_timestamp($5 / 1000.0)
-                     WHERE id = $6 AND user_id = $7
+                     SET text = $1, completed = $2, "order" = $3, due_date = $4, priority = $5, updated_at = to_timestamp($6 / 1000.0)
+                     WHERE id = $7 AND user_id = $8
                      RETURNING *`,
-                    [todo.text, todo.completed, todo.order, todo.due_date ? new Date(todo.due_date) : null, todo.updated_at, todo.id, userId]
+                    [todo.text, todo.completed, todo.order, todo.due_date ? new Date(todo.due_date) : null, todo.priority || 'none', todo.updated_at, todo.id, userId]
                   );
                   if (updateResult.rows[0]) {
                     results.push(updateResult.rows[0]);
@@ -183,10 +189,10 @@ export const todoQueries = {
                 // If it belongs to this user, it's a race condition - try to update
                 const updateResult = await client.query(
                   `UPDATE todos 
-                   SET text = $1, completed = $2, "order" = $3, due_date = $4, updated_at = to_timestamp($5 / 1000.0)
-                   WHERE id = $6 AND user_id = $7
+                   SET text = $1, completed = $2, "order" = $3, due_date = $4, priority = $5, updated_at = to_timestamp($6 / 1000.0)
+                   WHERE id = $7 AND user_id = $8
                    RETURNING *`,
-                  [todo.text, todo.completed, todo.order, todo.due_date ? new Date(todo.due_date) : null, todo.updated_at, todo.id, userId]
+                  [todo.text, todo.completed, todo.order, todo.due_date ? new Date(todo.due_date) : null, todo.priority || 'none', todo.updated_at, todo.id, userId]
                 );
                 if (updateResult.rows[0]) {
                   results.push(updateResult.rows[0]);
