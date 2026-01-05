@@ -10,6 +10,7 @@ A minimalist, production-ready todo list application optimized for mobile, iPad,
 - 🔐 JWT-based authentication
 - 🔄 Offline-first sync with conflict resolution
 - 🎯 Drag & drop todo reordering with keyboard accessibility
+- 📅 **Due dates with natural language parsing** (new!)
 - ⚡ Fast and lightweight
 - 🎨 Modern, minimalist design
 
@@ -27,14 +28,26 @@ A minimalist, production-ready todo list application optimized for mobile, iPad,
 npm install
 ```
 
-2. Create a `.env` file (optional, defaults to production Render backend):
+2. Create a `.env` file (optional for local development):
 ```
-# For local development, use your local backend:
+# Backend API URL (required for production deployments like Vercel)
+# For local development, defaults to http://localhost:3001/api if not set
 VITE_API_URL=http://localhost:3001/api
 
-# Or use the production backend (default):
-# VITE_API_URL=https://openlist-v3-server.onrender.com/api
+# WebSocket URL (optional - auto-derived from VITE_API_URL if not set)
+# Only set this if your WebSocket endpoint is different
+# VITE_WS_URL=ws://localhost:3001/ws
 ```
+
+**Environment Variable Priority:**
+- `VITE_API_URL` - Backend API URL (highest priority, recommended for all deployments)
+- `VITE_WS_URL` - WebSocket URL (optional, auto-derived from API URL if not set)
+- If `VITE_API_URL` is not set:
+  - Development mode: defaults to `http://localhost:3001/api`
+  - Production mode: falls back to `https://openlist-v3-server.onrender.com/api`
+
+**For Production Deployments (e.g., Vercel):**
+Always set `VITE_API_URL` in your deployment platform's environment variables to point to your backend API.
 
 3. Run the development server:
 ```bash
@@ -130,6 +143,43 @@ OpenList V3 includes a fully accessible drag-and-drop reordering system that wor
 - Order field stored in database with efficient indexing
 - Optimistic UI updates with background sync
 - Conflict resolution using last-write-wins strategy
+
+## Due Dates
+
+OpenList V3 includes an intelligent due date system with natural language parsing, making it easy to schedule tasks:
+
+### Features
+- **Natural Language Parsing**: Just type dates naturally in your task text
+  - Relative dates: "tomorrow", "today", "next week", "next month", "next year"
+  - Absolute dates: "26 jan 2026", "jan 26", "26/01/2026", "2026-01-26"
+  - Common formats: "Jan 26", "January 26", "26 Jan", "26 January"
+- **Auto-detection**: Dates are automatically detected and removed from task text
+- **Date Preview**: See the detected date before adding the task (can be removed if incorrect)
+- **Visual Indicators**: Color-coded badges show due date status
+  - Red: Overdue tasks
+  - Yellow: Due today
+  - Blue: Upcoming tasks
+- **Smart Filters**: Filter tasks by due date in the sidebar
+  - Overdue: Tasks past their due date
+  - Today: Tasks due today
+  - This Week: Tasks due this week (excluding today)
+  - Upcoming: All future tasks
+  - No Date: Tasks without a due date
+- **Date Picker**: Manual date selection with quick actions (Today, Tomorrow, Next Week)
+- **Responsive**: Native date picker on mobile, styled picker on desktop
+- **Accessible**: Full keyboard navigation and screen reader support
+
+### How to Use
+1. **Natural Language**: Type "Buy groceries tomorrow" and the date is automatically detected
+2. **Manual Selection**: Double-click a task, click the calendar icon, and select a date
+3. **Filtering**: Open the sidebar and click on date filter buttons
+4. **Editing**: Change dates anytime by editing the task
+
+### Implementation Details
+- Due dates stored as timestamps for consistency with other dates
+- Indexed database queries for efficient filtering
+- Syncs across all devices in real-time
+- Offline-first with conflict resolution
 
 ## Testing
 

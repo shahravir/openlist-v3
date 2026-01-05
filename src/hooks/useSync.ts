@@ -67,6 +67,7 @@ export function useSync() {
   const [wsConnected, setWsConnected] = useState(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncStatsRef = useRef({ websocket: 0, http: 0 });
+  const previousUserIdRef = useRef<string | null>(null);
 
   // Monitor online/offline status
   useEffect(() => {
@@ -81,6 +82,36 @@ export function useSync() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Clear todos when user changes (prevent cross-user data leakage)
+  useEffect(() => {
+    try {
+      const authUser = localStorage.getItem('auth_user');
+      const currentUserId = authUser ? JSON.parse(authUser)?.id : null;
+      
+      // If user ID changed (or user logged out), clear todos
+      if (previousUserIdRef.current !== null && previousUserIdRef.current !== currentUserId) {
+        logSync('SYNC', 'User changed, clearing todos', { 
+          previousUserId: previousUserIdRef.current, 
+          currentUserId 
+        });
+        setTodos([]);
+        setSyncQueue([]);
+        setLastSyncTime(null);
+      }
+      
+      previousUserIdRef.current = currentUserId;
+    } catch (error) {
+      // If we can't read user, that's okay - might be logged out
+      if (previousUserIdRef.current !== null) {
+        logSync('SYNC', 'User logged out, clearing todos');
+        setTodos([]);
+        setSyncQueue([]);
+        setLastSyncTime(null);
+        previousUserIdRef.current = null;
+      }
+    }
+  }, [setTodos, setSyncQueue, setLastSyncTime]);
 
   // Merge todos from server with conflict resolution
   const mergeTodosFromServer = useCallback((serverTodos: Todo[]) => {
@@ -102,7 +133,20 @@ export function useSync() {
         } else {
           // Conflict resolution: use server version if it's newer or equal
           if (serverTodo.updatedAt >= localTodo.updatedAt) {
-            merged.set(serverTodo.id, serverTodo);
+            // Use server version, but preserve local dueDate if server version doesn't have it
+            // and timestamps are equal (meaning no actual update happened on server)
+            const mergedTodo = {
+              ...serverTodo,
+              // Preserve local dueDate if:
+              // 1. Server has null/undefined for dueDate
+              // 2. Local has a dueDate value
+              // 3. Timestamps are equal (no actual server update happened)
+              // This prevents losing dueDate when server sync returns stale data
+              dueDate: (serverTodo.dueDate == null && localTodo.dueDate != null && serverTodo.updatedAt === localTodo.updatedAt)
+                ? localTodo.dueDate
+                : serverTodo.dueDate,
+            };
+            merged.set(serverTodo.id, mergedTodo);
             if (serverTodo.updatedAt > localTodo.updatedAt) {
               logSync('CONFLICT', 'Server version kept', {
                 todoId: serverTodo.id,
@@ -182,12 +226,24 @@ export function useSync() {
     const handleAuthChange = () => {
       logSync('WS', 'Auth state changed, reconnecting WebSocket');
       checkAndConnect();
+      // Clear todos when user changes to prevent data leakage
+      // The new user's todos will be loaded from server on initial sync
+      setTodos([]);
+      setSyncQueue([]);
+      setLastSyncTime(null);
+      previousUserIdRef.current = null; // Reset to trigger user change detection
     };
     window.addEventListener('auth:login', handleAuthChange);
-    window.addEventListener('auth:logout', () => {
+    const handleLogout = () => {
       wsService.disconnect();
       setWsConnected(false);
-    });
+      // Clear todos when user logs out to prevent data leakage
+      setTodos([]);
+      setSyncQueue([]);
+      setLastSyncTime(null);
+      previousUserIdRef.current = null;
+    };
+    window.addEventListener('auth:logout', handleLogout);
 
     // Helper to transform server format to client format
     const transformServerTodos = (serverData: any[]): Todo[] => {
@@ -196,6 +252,7 @@ export function useSync() {
         text: item.text,
         completed: item.completed,
         order: item.order ?? 0,
+        dueDate: item.due_date ?? item.dueDate ?? null,
         createdAt: item.created_at ?? item.createdAt,
         updatedAt: item.updated_at ?? item.updatedAt,
         userId: item.userId,
@@ -349,14 +406,16 @@ export function useSync() {
         text: todo.text,
         completed: todo.completed,
         order: todo.order,
+        dueDate: todo.dueDate ?? todo.due_date ?? null,
         createdAt: todo.createdAt,
         updatedAt: todo.updatedAt,
       }));
 
       // Only update if we got todos back, or if we had todos to sync
       // This prevents overwriting with empty response
+      // Use mergeTodosFromServer to preserve local state for todos not in server response
       if (mergedTodos.length > 0 || currentTodos.length > 0) {
-        setTodos(mergedTodos);
+        mergeTodosFromServer(mergedTodos);
         setLastSyncTime(Date.now());
       }
 
@@ -405,7 +464,7 @@ export function useSync() {
     }
   }, [todos, isSyncing, wsConnected, setTodos, setSyncQueue, setLastSyncTime]);
 
-  const addTodo = useCallback((text: string) => {
+  const addTodo = useCallback((text: string, dueDate?: number | null) => {
     const now = Date.now();
     
     // Get the max order from existing todos to append at the end
@@ -416,6 +475,7 @@ export function useSync() {
       text,
       completed: false,
       order: maxOrder + 1,
+      dueDate: dueDate || null,
       createdAt: now,
       updatedAt: now,
     };
@@ -434,6 +494,7 @@ export function useSync() {
           text: newTodo.text,
           completed: newTodo.completed,
           order: newTodo.order,
+          due_date: newTodo.dueDate,
           createdAt: newTodo.createdAt,
           updatedAt: newTodo.updatedAt,
         },
@@ -484,6 +545,7 @@ export function useSync() {
             text: updated.text,
             completed: updated.completed,
             order: updated.order,
+            due_date: updated.dueDate,
             createdAt: updated.createdAt,
             updatedAt: updated.updatedAt,
           },
