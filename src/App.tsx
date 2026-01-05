@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FloatingActionButton } from './components/FloatingActionButton';
 import { TodoList } from './components/TodoList';
 import { FilterMenu, FilterStatus } from './components/FilterMenu';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, DateFilter } from './components/Sidebar';
 import { SearchModal } from './components/SearchModal';
 import { BurgerMenuButton } from './components/BurgerMenuButton';
 import { Backdrop } from './components/Backdrop';
@@ -15,6 +15,7 @@ import { RegisterForm } from './components/Auth/RegisterForm';
 import { SyncStatus } from './components/SyncStatus';
 import { filterTodosBySearch, debounce } from './utils/searchUtils';
 import { SEARCH_DEBOUNCE_DELAY_MS } from './utils/constants';
+import { Todo } from './types';
 
 type AuthView = 'login' | 'register';
 
@@ -30,6 +31,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [toastState, setToastState] = useState<ToastState | null>(null);
@@ -243,7 +245,7 @@ function App() {
     setToastState(null);
   }, []);
 
-  // Filter and sort todos based on search and filter status
+  // Filter and sort todos based on search, filter status, and date filter
   const filteredTodos = useMemo(() => {
     let filtered = todos;
 
@@ -254,13 +256,48 @@ function App() {
       filtered = filtered.filter((t) => t.completed);
     }
 
+    // Apply date filter
+    if (dateFilter !== 'all') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTime = today.getTime();
+      const weekFromNow = new Date(today);
+      weekFromNow.setDate(weekFromNow.getDate() + 7);
+      const weekFromNowTime = weekFromNow.getTime();
+
+      filtered = filtered.filter((t) => {
+        if (dateFilter === 'no-date') {
+          return !t.dueDate;
+        }
+        
+        if (!t.dueDate) return false;
+
+        const dueDate = new Date(t.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        const dueDateTime = dueDate.getTime();
+
+        switch (dateFilter) {
+          case 'overdue':
+            return dueDateTime < todayTime;
+          case 'today':
+            return dueDateTime === todayTime;
+          case 'week':
+            return dueDateTime >= todayTime && dueDateTime <= weekFromNowTime;
+          case 'upcoming':
+            return dueDateTime > todayTime;
+          default:
+            return true;
+        }
+      });
+    }
+
     // Apply search filter (debounced)
     if (debouncedSearchQuery) {
       filtered = filtered.filter((t) => filterTodosBySearch(t.text, debouncedSearchQuery));
     }
 
     return filtered;
-  }, [todos, filterStatus, debouncedSearchQuery]);
+  }, [todos, filterStatus, dateFilter, debouncedSearchQuery]);
   
   // Sort todos: by order field primarily, then incomplete first, then by creation date
   const sortedTodos = useMemo(() => {
@@ -318,6 +355,8 @@ function App() {
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
         onOpenSearch={openSearchModal}
+        dateFilter={dateFilter}
+        onDateFilterChange={setDateFilter}
         isPersistent={true}
       />
 

@@ -1,13 +1,17 @@
 import { useEffect, useRef } from 'react';
 
+export type DateFilter = 'all' | 'overdue' | 'today' | 'week' | 'upcoming' | 'no-date';
+
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenSearch: () => void;
+  dateFilter?: DateFilter;
+  onDateFilterChange?: (filter: DateFilter) => void;
   isPersistent?: boolean; // For desktop persistent sidebar
 }
 
-export function Sidebar({ isOpen, onClose, onOpenSearch, isPersistent = false }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onDateFilterChange, isPersistent = false }: SidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -120,8 +124,111 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, isPersistent = false }:
             <span className="ml-auto text-xs text-gray-500">Ctrl+K</span>
           </button>
 
-          {/* Future sections can go here */}
-          {/* Filters, Settings, Help, etc. */}
+          {/* Date Filters */}
+          {onDateFilterChange && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2">
+                Due Date
+              </h3>
+              <div className="space-y-1">
+                <button
+                  onClick={() => onDateFilterChange('all')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    dateFilter === 'all'
+                      ? 'bg-primary-50 text-primary-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show all todos"
+                  aria-pressed={dateFilter === 'all'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  <span>All</span>
+                </button>
+                
+                <button
+                  onClick={() => onDateFilterChange('overdue')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    dateFilter === 'overdue'
+                      ? 'bg-red-50 text-red-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show overdue todos"
+                  aria-pressed={dateFilter === 'overdue'}
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <span>Overdue</span>
+                </button>
+                
+                <button
+                  onClick={() => onDateFilterChange('today')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    dateFilter === 'today'
+                      ? 'bg-yellow-50 text-yellow-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show todos due today"
+                  aria-pressed={dateFilter === 'today'}
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  <span>Today</span>
+                </button>
+                
+                <button
+                  onClick={() => onDateFilterChange('week')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    dateFilter === 'week'
+                      ? 'bg-blue-50 text-blue-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show todos due this week"
+                  aria-pressed={dateFilter === 'week'}
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  </svg>
+                  <span>This Week</span>
+                </button>
+                
+                <button
+                  onClick={() => onDateFilterChange('upcoming')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    dateFilter === 'upcoming'
+                      ? 'bg-blue-50 text-blue-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show upcoming todos"
+                  aria-pressed={dateFilter === 'upcoming'}
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  </svg>
+                  <span>Upcoming</span>
+                </button>
+                
+                <button
+                  onClick={() => onDateFilterChange('no-date')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                    dateFilter === 'no-date'
+                      ? 'bg-gray-100 text-gray-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  aria-label="Show todos without due date"
+                  aria-pressed={dateFilter === 'no-date'}
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span>No Date</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </aside>

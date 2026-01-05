@@ -11,6 +11,7 @@ export interface Todo {
   text: string;
   completed: boolean;
   order: number;
+  due_date: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -39,6 +40,7 @@ export interface SyncRequest {
     text: string;
     completed: boolean;
     order: number;
+    due_date?: number | null;
     created_at: number;
     updated_at: number;
   }>;
@@ -50,6 +52,7 @@ export interface SyncResponse {
     text: string;
     completed: boolean;
     order: number;
+    due_date?: number | null;
     created_at: number;
     updated_at: number;
   }>;

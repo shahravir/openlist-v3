@@ -120,6 +120,7 @@ class ApiClient {
         text: string;
         completed: boolean;
         order: number;
+        due_date?: number | null;
         created_at: number;
         updated_at: number;
       }>;
@@ -129,6 +130,7 @@ class ApiClient {
         text: todo.text,
         completed: todo.completed,
         order: todo.order,
+        due_date: todo.dueDate,
         created_at: todo.createdAt,
         updated_at: todo.updatedAt,
       })),
@@ -139,25 +141,28 @@ class ApiClient {
       text: todo.text,
       completed: todo.completed,
       order: todo.order,
+      dueDate: todo.due_date,
       createdAt: todo.created_at,
       updatedAt: todo.updated_at,
     }));
   }
 
-  async updateTodo(id: string, text: string, completed: boolean, order?: number): Promise<Todo> {
+  async updateTodo(id: string, text: string, completed: boolean, order?: number, dueDate?: number | null): Promise<Todo> {
     const response = await this.client.put<{
       id: string;
       text: string;
       completed: boolean;
       order: number;
+      due_date?: number | null;
       created_at: number;
       updated_at: number;
-    }>(`/todos/${id}`, { text, completed, order });
+    }>(`/todos/${id}`, { text, completed, order, due_date: dueDate });
     return {
       id: response.data.id,
       text: response.data.text,
       completed: response.data.completed,
       order: response.data.order,
+      dueDate: response.data.due_date,
       createdAt: response.data.created_at,
       updatedAt: response.data.updated_at,
     };

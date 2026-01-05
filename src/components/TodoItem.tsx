@@ -6,12 +6,14 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { DragHandle } from './DragHandle';
 import { ReorderButtons } from './ReorderButtons';
+import { DueDateIndicator } from './DueDateIndicator';
+import { DatePicker } from './DatePicker';
 
 interface TodoItemProps {
   todo: Todo;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, text: string) => void;
+  onUpdate: (id: string, text: string, dueDate?: number | null) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   canMoveUp: boolean;
@@ -22,6 +24,8 @@ interface TodoItemProps {
 export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveDown, canMoveUp, canMoveDown, searchQuery = '' }: TodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [editDueDate, setEditDueDate] = useState<number | null>(todo.dueDate || null);
   const [announcement, setAnnouncement] = useState<string>('');
   const [isNew, setIsNew] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,12 +56,13 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     }
   }, [todo.createdAt]);
 
-  // Update editText when todo.text changes externally (e.g., from sync)
+  // Update editText and editDueDate when todo changes externally (e.g., from sync)
   useEffect(() => {
     if (!isEditing) {
       setEditText(todo.text);
+      setEditDueDate(todo.dueDate || null);
     }
-  }, [todo.text, isEditing]);
+  }, [todo.text, todo.dueDate, isEditing]);
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -74,6 +79,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
 
   const handleStartEdit = () => {
     setEditText(todo.text);
+    setEditDueDate(todo.dueDate || null);
     setIsEditing(true);
   };
 
@@ -82,20 +88,23 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     return (
       trimmedText.length >= MIN_TODO_LENGTH &&
       trimmedText.length <= MAX_TODO_LENGTH &&
-      trimmedText !== todo.text
+      (trimmedText !== todo.text || editDueDate !== (todo.dueDate || null))
     );
   };
 
   const handleSave = () => {
     if (validateAndSave(editText)) {
-      onUpdate(todo.id, editText.trim());
+      onUpdate(todo.id, editText.trim(), editDueDate);
     }
     setIsEditing(false);
+    setShowDatePicker(false);
   };
 
   const handleCancel = () => {
     setEditText(todo.text);
+    setEditDueDate(todo.dueDate || null);
     setIsEditing(false);
+    setShowDatePicker(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -119,52 +128,75 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
         <div 
           ref={setNodeRef}
           style={style}
-          className="group flex items-center gap-2 px-4 py-3 bg-white rounded-lg shadow-sm border-2 border-primary-400 transition-all duration-200 touch-manipulation"
+          className="relative group flex flex-col gap-2 px-4 py-3 bg-white rounded-lg shadow-sm border-2 border-primary-400 transition-all duration-200 touch-manipulation"
         >
-          <input
-            ref={inputRef}
-            type="text"
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            maxLength={MAX_TODO_LENGTH}
-            className="flex-1 text-base text-gray-800 bg-transparent border-none outline-none px-0"
-            aria-label="Edit todo text"
-          />
-          <button
-            onClick={handleSave}
-            className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-white bg-primary-500 hover:bg-primary-600 transition-all duration-200 touch-manipulation"
-            aria-label="Save changes"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              maxLength={MAX_TODO_LENGTH}
+              className="flex-1 text-base text-gray-800 bg-transparent border-none outline-none px-0"
+              aria-label="Edit todo text"
+            />
+            <button
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:text-primary-500 hover:bg-primary-50 transition-all duration-200 touch-manipulation"
+              aria-label="Set due date"
+              title="Set due date"
             >
-              <path d="M5 13l4 4L19 7" />
-            </svg>
-          </button>
-          <button
-            onClick={handleCancel}
-            className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 touch-manipulation"
-            aria-label="Cancel editing"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-white bg-primary-500 hover:bg-primary-600 transition-all duration-200 touch-manipulation"
+              aria-label="Save changes"
             >
-              <path d="M6 18L18 6M6 6l12 12" />
-            </svg>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+            <button
+              onClick={handleCancel}
+              className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 touch-manipulation"
+              aria-label="Cancel editing"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
           </button>
+          </div>
+          
+          {/* Date picker */}
+          {showDatePicker && (
+            <div className="mt-2">
+              <DatePicker
+                value={editDueDate}
+                onChange={setEditDueDate}
+                onClose={() => setShowDatePicker(false)}
+              />
+            </div>
+          )}
         </div>
       </>
     );
@@ -216,29 +248,36 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
           </svg>
         )}
       </button>
-      <span
-        onDoubleClick={handleStartEdit}
-        className={`flex-1 text-base ${
-          todo.completed
-            ? 'text-gray-400 line-through'
-            : 'text-gray-800'
-        } transition-all duration-200 cursor-pointer`}
-      >
-        {searchQuery ? (
-          <>
-            {highlightText(todo.text, searchQuery).map((segment, index) => (
-              <span
-                key={index}
-                className={segment.highlight ? 'bg-yellow-200 font-medium' : ''}
-              >
-                {segment.text}
-              </span>
-            ))}
-          </>
-        ) : (
-          todo.text
+      <div className="flex-1 flex flex-col gap-1">
+        <span
+          onDoubleClick={handleStartEdit}
+          className={`text-base ${
+            todo.completed
+              ? 'text-gray-400 line-through'
+              : 'text-gray-800'
+          } transition-all duration-200 cursor-pointer`}
+        >
+          {searchQuery ? (
+            <>
+              {highlightText(todo.text, searchQuery).map((segment, index) => (
+                <span
+                  key={index}
+                  className={segment.highlight ? 'bg-yellow-200 font-medium' : ''}
+                >
+                  {segment.text}
+                </span>
+              ))}
+            </>
+          ) : (
+            todo.text
+          )}
+        </span>
+        {todo.dueDate && (
+          <div className="flex items-center">
+            <DueDateIndicator dueDate={todo.dueDate} compact={true} />
+          </div>
         )}
-      </span>
+      </div>
       <button
         onClick={handleStartEdit}
         className="flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-primary-500 hover:bg-primary-50 focus:text-primary-500 focus:bg-primary-50 transition-all duration-200 md:scale-0 md:group-hover:scale-100 md:focus:scale-100 touch-manipulation"

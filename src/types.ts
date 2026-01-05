@@ -3,6 +3,7 @@ export interface Todo {
   text: string;
   completed: boolean;
   order: number;
+  dueDate?: number | null;
   createdAt: number;
   updatedAt: number;
   userId?: string; // Optional, for local-only todos before sync
