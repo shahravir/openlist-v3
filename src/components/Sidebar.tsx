@@ -328,7 +328,7 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                   aria-pressed={priorityFilter === 'high'}
                 >
                   <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    <path d="M5 15l7-7 7 7M5 11l7-7 7 7" />
                   </svg>
                   <span>High</span>
                 </button>
@@ -344,7 +344,7 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                   aria-pressed={priorityFilter === 'medium'}
                 >
                   <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    <path d="M5 15l7-7 7 7" />
                   </svg>
                   <span>Medium</span>
                 </button>
