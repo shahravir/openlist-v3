@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 
 export type DateFilter = 'all' | 'overdue' | 'today' | 'week' | 'upcoming' | 'no-date';
 export type FilterStatus = 'all' | 'active' | 'completed';
@@ -20,6 +20,22 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onDateFilterChange, filterStatus = 'all', onFilterStatusChange, priorityFilter = 'all', onPriorityFilterChange, isPersistent = false }: SidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Calculate active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterStatus !== 'all') count++;
+    if (dateFilter !== 'all') count++;
+    if (priorityFilter !== 'all') count++;
+    return count;
+  }, [filterStatus, dateFilter, priorityFilter]);
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    onFilterStatusChange?.('all');
+    onDateFilterChange?.('all');
+    onPriorityFilterChange?.('all');
+  };
 
   // Focus trap: handle Tab key
   useEffect(() => {
@@ -108,15 +124,15 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {/* Search Button */}
           <button
             onClick={onOpenSearch}
-            className="w-full flex items-center gap-3 px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation"
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation"
             aria-label="Open search"
           >
             <svg
-              className="w-5 h-5 text-gray-600"
+              className="w-5 h-5 text-gray-600 flex-shrink-0"
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -130,24 +146,40 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
             <span className="ml-auto text-xs text-gray-500">Ctrl+K</span>
           </button>
 
-          {/* Status Filters */}
+          {/* Active Filters Indicator & Clear Button */}
+          {activeFilterCount > 0 && (
+            <div className="flex items-center justify-between px-2 py-1.5 bg-primary-50 rounded-lg">
+              <span className="text-xs font-medium text-primary-700">
+                {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
+              </span>
+              <button
+                onClick={handleClearFilters}
+                className="text-xs text-primary-600 hover:text-primary-800 font-medium underline focus:outline-none focus:ring-2 focus:ring-primary-400 rounded px-1"
+                aria-label="Clear all filters"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+
+          {/* Status Filters - Compact Chip Style */}
           {onFilterStatusChange && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2">
                 Status
               </h3>
-              <div className="space-y-1">
+              <div className="flex flex-wrap gap-1.5 px-2">
                 <button
                   onClick={() => onFilterStatusChange('all')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     filterStatus === 'all'
-                      ? 'bg-primary-50 text-primary-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-primary-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show all todos"
                   aria-pressed={filterStatus === 'all'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                   <span>All</span>
@@ -155,15 +187,15 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                 
                 <button
                   onClick={() => onFilterStatusChange('active')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     filterStatus === 'active'
-                      ? 'bg-blue-50 text-blue-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show active todos"
                   aria-pressed={filterStatus === 'active'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Active</span>
@@ -171,57 +203,54 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                 
                 <button
                   onClick={() => onFilterStatusChange('completed')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     filterStatus === 'completed'
-                      ? 'bg-green-50 text-green-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-green-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show completed todos"
                   aria-pressed={filterStatus === 'completed'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>Completed</span>
+                  <span>Done</span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* Date Filters */}
+          {/* Date Filters - Compact Chip Style */}
           {onDateFilterChange && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2">
                 Due Date
               </h3>
-              <div className="space-y-1">
+              <div className="flex flex-wrap gap-1.5 px-2">
                 <button
                   onClick={() => onDateFilterChange('all')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     dateFilter === 'all'
-                      ? 'bg-primary-50 text-primary-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-primary-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show all todos by due date"
                   aria-pressed={dateFilter === 'all'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
                   <span>All</span>
                 </button>
                 
                 <button
                   onClick={() => onDateFilterChange('overdue')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     dateFilter === 'overdue'
-                      ? 'bg-red-50 text-red-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-red-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show overdue todos"
                   aria-pressed={dateFilter === 'overdue'}
                 >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
                   <span>Overdue</span>
@@ -229,15 +258,15 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                 
                 <button
                   onClick={() => onDateFilterChange('today')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     dateFilter === 'today'
-                      ? 'bg-yellow-50 text-yellow-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-yellow-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show todos due today"
                   aria-pressed={dateFilter === 'today'}
                 >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                   </svg>
                   <span>Today</span>
@@ -245,31 +274,31 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                 
                 <button
                   onClick={() => onDateFilterChange('week')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     dateFilter === 'week'
-                      ? 'bg-blue-50 text-blue-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show todos due this week"
                   aria-pressed={dateFilter === 'week'}
                 >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                   </svg>
-                  <span>This Week</span>
+                  <span>Week</span>
                 </button>
                 
                 <button
                   onClick={() => onDateFilterChange('upcoming')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     dateFilter === 'upcoming'
-                      ? 'bg-blue-50 text-blue-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show upcoming todos"
                   aria-pressed={dateFilter === 'upcoming'}
                 >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                   </svg>
                   <span>Upcoming</span>
@@ -277,15 +306,15 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                 
                 <button
                   onClick={() => onDateFilterChange('no-date')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     dateFilter === 'no-date'
-                      ? 'bg-gray-100 text-gray-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-gray-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show todos without due date"
                   aria-pressed={dateFilter === 'no-date'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   <span>No Date</span>
@@ -294,40 +323,37 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
             </div>
           )}
 
-          {/* Priority Filters */}
+          {/* Priority Filters - Compact Chip Style */}
           {onPriorityFilterChange && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2">
                 Priority
               </h3>
-              <div className="space-y-1">
+              <div className="flex flex-wrap gap-1.5 px-2">
                 <button
                   onClick={() => onPriorityFilterChange('all')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     priorityFilter === 'all'
-                      ? 'bg-primary-50 text-primary-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-primary-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show all priorities"
                   aria-pressed={priorityFilter === 'all'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
                   <span>All</span>
                 </button>
                 
                 <button
                   onClick={() => onPriorityFilterChange('high')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     priorityFilter === 'high'
-                      ? 'bg-red-50 text-red-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-red-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show high priority todos"
                   aria-pressed={priorityFilter === 'high'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M5 15l7-7 7 7M5 11l7-7 7 7" />
                   </svg>
                   <span>High</span>
@@ -335,15 +361,15 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                 
                 <button
                   onClick={() => onPriorityFilterChange('medium')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     priorityFilter === 'medium'
-                      ? 'bg-yellow-50 text-yellow-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-yellow-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show medium priority todos"
                   aria-pressed={priorityFilter === 'medium'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M5 15l7-7 7 7" />
                   </svg>
                   <span>Medium</span>
@@ -351,15 +377,15 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                 
                 <button
                   onClick={() => onPriorityFilterChange('low')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     priorityFilter === 'low'
-                      ? 'bg-blue-50 text-blue-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show low priority todos"
                   aria-pressed={priorityFilter === 'low'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
                   <span>Low</span>
@@ -367,15 +393,15 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
                 
                 <button
                   onClick={() => onPriorityFilterChange('none')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 touch-manipulation ${
                     priorityFilter === 'none'
-                      ? 'bg-gray-100 text-gray-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-gray-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   aria-label="Show todos without priority"
                   aria-pressed={priorityFilter === 'none'}
                 >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M20 12H4" />
                   </svg>
                   <span>None</span>
