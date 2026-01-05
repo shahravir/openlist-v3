@@ -4,7 +4,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 
 interface FloatingActionButtonProps {
-  onAdd: (text: string) => void;
+  onAdd: (text: string, dueDate?: number | null) => void;
 }
 
 export function FloatingActionButton({ onAdd }: FloatingActionButtonProps) {
@@ -73,8 +73,8 @@ export function FloatingActionButton({ onAdd }: FloatingActionButtonProps) {
     setIsExpanded(true);
   };
 
-  const handleAdd = (text: string) => {
-    onAdd(text);
+  const handleAdd = (text: string, dueDate?: number | null) => {
+    onAdd(text, dueDate);
     setIsExpanded(false);
   };
 

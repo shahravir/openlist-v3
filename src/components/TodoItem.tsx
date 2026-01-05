@@ -8,6 +8,7 @@ import { DragHandle } from './DragHandle';
 import { ReorderButtons } from './ReorderButtons';
 import { DueDateIndicator } from './DueDateIndicator';
 import { DatePicker } from './DatePicker';
+import { parseDateFromText } from '../utils/dateParser';
 
 interface TodoItemProps {
   todo: Todo;
@@ -26,6 +27,8 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   const [editText, setEditText] = useState(todo.text);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editDueDate, setEditDueDate] = useState<number | null>(todo.dueDate || null);
+  const [detectedDate, setDetectedDate] = useState<{ date: Date; dateText: string } | null>(null);
+  const [showDatePreview, setShowDatePreview] = useState(false);
   const [announcement, setAnnouncement] = useState<string>('');
   const [isNew, setIsNew] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +67,24 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     }
   }, [todo.text, todo.dueDate, isEditing]);
 
+  // Detect dates in the text as user types (only when editing and no manual date picker is set)
+  useEffect(() => {
+    if (isEditing && editText.trim() && !showDatePicker) {
+      const result = parseDateFromText(editText);
+      if (result.parsedDate) {
+        setDetectedDate(result.parsedDate);
+        setShowDatePreview(true);
+      } else {
+        setDetectedDate(null);
+        setShowDatePreview(false);
+      }
+    } else {
+      // Clear when not editing or date picker is open
+      setDetectedDate(null);
+      setShowDatePreview(false);
+    }
+  }, [editText, isEditing, showDatePicker]);
+
   // Focus input when entering edit mode
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -86,7 +107,18 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   const validateAndSave = (text: string): boolean => {
     const trimmedText = text.trim();
     const textChanged = trimmedText !== todo.text;
-    const dateChanged = (editDueDate ?? null) !== (todo.dueDate ?? null);
+    
+    // Check if date changed: detected date, manual date picker, or removed
+    let dateChanged = false;
+    if (detectedDate) {
+      // Date detected from text - check if it's different from current
+      const detectedDateTimestamp = detectedDate.date.getTime();
+      dateChanged = detectedDateTimestamp !== (todo.dueDate ?? null);
+    } else if (editDueDate !== (todo.dueDate ?? null)) {
+      // Manual date picker was changed
+      dateChanged = true;
+    }
+    
     return (
       trimmedText.length >= MIN_TODO_LENGTH &&
       trimmedText.length <= MAX_TODO_LENGTH &&
@@ -95,11 +127,59 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   };
 
   const handleSave = () => {
-    if (validateAndSave(editText)) {
-      onUpdate(todo.id, editText.trim(), editDueDate);
+    const trimmedText = editText.trim();
+    
+    if (!trimmedText || trimmedText.length < MIN_TODO_LENGTH || trimmedText.length > MAX_TODO_LENGTH) {
+      // Invalid text, just close editing
+      setIsEditing(false);
+      setShowDatePicker(false);
+      setDetectedDate(null);
+      setShowDatePreview(false);
+      return;
     }
+    
+    // Always parse for dates in the text (most reliable)
+    const dateParseResult = parseDateFromText(trimmedText);
+    
+    let finalText = trimmedText;
+    let finalDueDate: number | null = null;
+
+    // Priority: detected date from text > manual date picker (if changed) > existing date
+    if (dateParseResult.parsedDate) {
+      // Date detected in text - use it and remove from text
+      finalText = dateParseResult.cleanedText.trim();
+      finalDueDate = dateParseResult.parsedDate.date.getTime();
+      
+      // Ensure cleaned text is still valid
+      if (finalText.length < MIN_TODO_LENGTH) {
+        // If cleaning removed too much, keep original text but still apply date
+        finalText = trimmedText;
+      }
+    } else if (editDueDate !== (todo.dueDate ?? null)) {
+      // Manual date picker was changed from original
+      finalDueDate = editDueDate;
+    } else {
+      // No changes to date, keep existing
+      finalDueDate = todo.dueDate ?? null;
+    }
+
+    // Check if there are actual changes (using final cleaned text)
+    const textChanged = finalText !== todo.text;
+    const dateChanged = (finalDueDate ?? null) !== (todo.dueDate ?? null);
+    
+    // Always save if a date was detected from text, even if text is the same
+    // This ensures dates are always applied when mentioned in the text
+    const dateWasDetected = dateParseResult.parsedDate !== null;
+    
+    // Save if there are any changes (text or date) OR if a date was detected
+    if (textChanged || dateChanged || dateWasDetected) {
+      onUpdate(todo.id, finalText, finalDueDate);
+    }
+    
     setIsEditing(false);
     setShowDatePicker(false);
+    setDetectedDate(null);
+    setShowDatePreview(false);
   };
 
   const handleCancel = () => {
@@ -107,6 +187,8 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     setEditDueDate(todo.dueDate || null);
     setIsEditing(false);
     setShowDatePicker(false);
+    setDetectedDate(null);
+    setShowDatePreview(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -133,16 +215,49 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
           className="relative group flex flex-col gap-2 px-4 py-3 bg-white rounded-lg shadow-sm border-2 border-primary-400 transition-all duration-200 touch-manipulation"
         >
           <div className="flex items-center gap-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              maxLength={MAX_TODO_LENGTH}
-              className="flex-1 text-base text-gray-800 bg-transparent border-none outline-none px-0"
-              aria-label="Edit todo text"
-            />
+            <div className="flex-1 relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                maxLength={MAX_TODO_LENGTH}
+                className="w-full text-base text-gray-800 bg-transparent border-none outline-none px-0"
+                aria-label="Edit todo text"
+                aria-describedby={showDatePreview ? 'edit-date-preview' : undefined}
+              />
+              
+              {/* Date preview */}
+              {showDatePreview && detectedDate && !showDatePicker && (
+                <div
+                  id="edit-date-preview"
+                  className="absolute top-full left-0 right-0 mt-1 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm z-50 shadow-md"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-blue-700 font-medium flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>Due: {detectedDate.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetectedDate(null);
+                        setShowDatePreview(false);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 text-xs underline"
+                      aria-label="Remove detected due date"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setShowDatePicker(!showDatePicker)}
               className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:text-primary-500 hover:bg-primary-50 transition-all duration-200 touch-manipulation"

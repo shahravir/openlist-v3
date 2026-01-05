@@ -102,7 +102,20 @@ export function useSync() {
         } else {
           // Conflict resolution: use server version if it's newer or equal
           if (serverTodo.updatedAt >= localTodo.updatedAt) {
-            merged.set(serverTodo.id, serverTodo);
+            // Use server version, but preserve local dueDate if server version doesn't have it
+            // and timestamps are equal (meaning no actual update happened on server)
+            const mergedTodo = {
+              ...serverTodo,
+              // Preserve local dueDate if:
+              // 1. Server has null/undefined for dueDate
+              // 2. Local has a dueDate value
+              // 3. Timestamps are equal (no actual server update happened)
+              // This prevents losing dueDate when server sync returns stale data
+              dueDate: (serverTodo.dueDate == null && localTodo.dueDate != null && serverTodo.updatedAt === localTodo.updatedAt)
+                ? localTodo.dueDate
+                : serverTodo.dueDate,
+            };
+            merged.set(serverTodo.id, mergedTodo);
             if (serverTodo.updatedAt > localTodo.updatedAt) {
               logSync('CONFLICT', 'Server version kept', {
                 todoId: serverTodo.id,
@@ -350,14 +363,16 @@ export function useSync() {
         text: todo.text,
         completed: todo.completed,
         order: todo.order,
+        dueDate: todo.dueDate ?? todo.due_date ?? null,
         createdAt: todo.createdAt,
         updatedAt: todo.updatedAt,
       }));
 
       // Only update if we got todos back, or if we had todos to sync
       // This prevents overwriting with empty response
+      // Use mergeTodosFromServer to preserve local state for todos not in server response
       if (mergedTodos.length > 0 || currentTodos.length > 0) {
-        setTodos(mergedTodos);
+        mergeTodosFromServer(mergedTodos);
         setLastSyncTime(Date.now());
       }
 

@@ -173,25 +173,31 @@ function App() {
     }
   }, [todos, updateTodo, addUndoAction]);
 
-  const handleUpdate = useCallback((id: string, text: string) => {
+  const handleUpdate = useCallback((id: string, text: string, dueDate?: number | null) => {
     const todo = todos.find((t) => t.id === id);
-    if (todo && text !== todo.text) {
-      const previousText = todo.text;
-      updateTodo(id, { text });
+    if (todo) {
+      const textChanged = text !== todo.text;
+      const dateChanged = (dueDate ?? null) !== (todo.dueDate ?? null);
       
-      // Create undo action
-      const undoAction: UndoAction = {
-        type: 'edit',
-        todo: { ...todo, text },
-        previousText,
-      };
-      
-      // Track undo action and show toast
-      addUndoAction(undoAction);
-      setToastState({
-        message: 'Task updated',
-        action: undoAction,
-      });
+      if (textChanged || dateChanged) {
+        const previousText = todo.text;
+        const previousDueDate = todo.dueDate;
+        updateTodo(id, { text, dueDate: dueDate ?? null });
+        
+        // Create undo action
+        const undoAction: UndoAction = {
+          type: 'edit',
+          todo: { ...todo, text, dueDate: dueDate ?? null },
+          previousText,
+        };
+        
+        // Track undo action and show toast
+        addUndoAction(undoAction);
+        setToastState({
+          message: 'Task updated',
+          action: undoAction,
+        });
+      }
     }
   }, [todos, updateTodo, addUndoAction]);
   
