@@ -19,12 +19,13 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Priority } from './PrioritySelector';
 
 interface TodoListProps {
   todos: Todo[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, text: string) => void;
+  onUpdate: (id: string, text: string, dueDate?: number | null, priority?: Priority) => void;
   onReorder: (reorderedTodos: Todo[]) => void;
   searchQuery?: string;
   emptyMessage?: string;

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { SearchBar } from './SearchBar';
 import { TodoList } from './TodoList';
 import { Todo } from '../types';
+import { Priority } from './PrioritySelector';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -11,7 +12,7 @@ interface SearchModalProps {
   filteredTodos: Todo[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, text: string) => void;
+  onUpdate: (id: string, text: string, dueDate?: number | null, priority?: Priority) => void;
   onReorder: (reorderedTodos: Todo[]) => void;
 }
 

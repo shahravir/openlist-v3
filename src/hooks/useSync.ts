@@ -133,7 +133,7 @@ export function useSync() {
         } else {
           // Conflict resolution: use server version if it's newer or equal
           if (serverTodo.updatedAt >= localTodo.updatedAt) {
-            // Use server version, but preserve local dueDate if server version doesn't have it
+            // Use server version, but preserve local dueDate and priority if server version doesn't have them
             // and timestamps are equal (meaning no actual update happened on server)
             const mergedTodo = {
               ...serverTodo,
@@ -145,6 +145,16 @@ export function useSync() {
               dueDate: (serverTodo.dueDate == null && localTodo.dueDate != null && serverTodo.updatedAt === localTodo.updatedAt)
                 ? localTodo.dueDate
                 : serverTodo.dueDate,
+              // Preserve local priority if:
+              // 1. Server has 'none' or undefined for priority
+              // 2. Local has a non-'none' priority value
+              // 3. Timestamps are equal (no actual server update happened)
+              // This prevents losing priority when server sync returns stale data
+              priority: (serverTodo.updatedAt === localTodo.updatedAt && 
+                         (serverTodo.priority === 'none' || !serverTodo.priority) && 
+                         localTodo.priority && localTodo.priority !== 'none')
+                ? localTodo.priority
+                : (serverTodo.priority ?? 'none'),
             };
             merged.set(serverTodo.id, mergedTodo);
             if (serverTodo.updatedAt > localTodo.updatedAt) {

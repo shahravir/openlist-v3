@@ -329,6 +329,25 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     );
   }
 
+  // Get checkbox border color based on priority
+  const getCheckboxBorderClass = () => {
+    if (todo.completed) {
+      return 'bg-primary-500 border-primary-500';
+    }
+    
+    const priority = todo.priority || 'none';
+    switch (priority) {
+      case 'low':
+        return 'border-green-500 hover:border-green-600';
+      case 'medium':
+        return 'border-amber-500 hover:border-amber-600';
+      case 'high':
+        return 'border-red-500 hover:border-red-600';
+      default:
+        return 'border-gray-300 hover:border-primary-400';
+    }
+  };
+
   return (
     <div 
       ref={setNodeRef}
@@ -354,11 +373,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       
       <button
         onClick={() => onToggle(todo.id)}
-        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
-          todo.completed
-            ? 'bg-primary-500 border-primary-500'
-            : 'border-gray-300 hover:border-primary-400'
-        }`}
+        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${getCheckboxBorderClass()}`}
         aria-label={todo.completed ? 'Mark as incomplete' : 'Mark as complete'}
       >
         {todo.completed && (
