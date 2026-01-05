@@ -85,10 +85,12 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
 
   const validateAndSave = (text: string): boolean => {
     const trimmedText = text.trim();
+    const textChanged = trimmedText !== todo.text;
+    const dateChanged = (editDueDate ?? null) !== (todo.dueDate ?? null);
     return (
       trimmedText.length >= MIN_TODO_LENGTH &&
       trimmedText.length <= MAX_TODO_LENGTH &&
-      (trimmedText !== todo.text || editDueDate !== (todo.dueDate || null))
+      (textChanged || dateChanged)
     );
   };
 

@@ -182,7 +182,7 @@ function getMonthIndex(monthStr: string): number {
     ['february', 'feb'],
     ['march', 'mar'],
     ['april', 'apr'],
-    ['may', 'may'],
+    ['may'],
     ['june', 'jun'],
     ['july', 'jul'],
     ['august', 'aug'],

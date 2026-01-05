@@ -281,7 +281,8 @@ function App() {
           case 'today':
             return dueDateTime === todayTime;
           case 'week':
-            return dueDateTime >= todayTime && dueDateTime <= weekFromNowTime;
+            // Exclude today to avoid overlap with 'today' filter
+            return dueDateTime > todayTime && dueDateTime <= weekFromNowTime;
           case 'upcoming':
             return dueDateTime > todayTime;
           default:
