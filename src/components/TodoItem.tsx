@@ -308,7 +308,10 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
             <div className="mt-2">
               <PrioritySelector
                 value={editPriority}
-                onChange={setEditPriority}
+                onChange={(newPriority) => {
+                  setEditPriority(newPriority);
+                  setShowPrioritySelector(false); // Close selector after selection
+                }}
                 isMobile={window.innerWidth < 768}
               />
             </div>
@@ -416,7 +419,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
         </span>
         <div className="flex items-center gap-2 flex-wrap">
           {todo.dueDate && <DueDateIndicator dueDate={todo.dueDate} />}
-          {todo.priority && <PriorityIndicator priority={todo.priority} />}
+          {todo.priority && todo.priority !== 'none' && <PriorityIndicator priority={todo.priority} />}
         </div>
       </div>
       <button

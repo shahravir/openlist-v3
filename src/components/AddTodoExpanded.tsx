@@ -228,7 +228,10 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
           {showPrioritySelector && (
             <PrioritySelector
               value={priority}
-              onChange={setPriority}
+              onChange={(newPriority) => {
+                setPriority(newPriority);
+                setShowPrioritySelector(false); // Close selector after selection
+              }}
               isMobile={window.innerWidth < 768}
             />
           )}

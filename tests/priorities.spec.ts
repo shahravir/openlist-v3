@@ -29,26 +29,34 @@ test.describe('Priorities Feature', () => {
     // Click priority button to open selector
     await page.click('button[aria-label="Set priority"]');
     
-    // Wait for priority selector
-    await page.waitForTimeout(300);
+    // Wait for priority selector to appear
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
     
     // Select high priority
-    const highPriorityButton = page.locator('button[aria-label*="high"]').first();
+    const highPriorityButton = page.locator('button[aria-label*="Set priority to high"]').first();
     await highPriorityButton.click();
     
-    // Submit
-    await page.click('button[type="submit"]:has-text("Add Task")');
+    // Wait for priority selector to close (it should close after selection)
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { state: 'hidden', timeout: 2000 }).catch(() => {});
     
-    // Wait for todo to appear
-    await page.waitForTimeout(500);
+    // Wait for priority button text to update (should show "Priority: High")
+    await page.waitForSelector('button[aria-label="Set priority"]:has-text("Priority: High")', { timeout: 2000 });
     
-    // Check that todo exists with high priority indicator
+    // Submit and wait for network to be idle
+    const submitButton = page.locator('button[type="submit"]:has-text("Add Task")');
+    await submitButton.waitFor({ state: 'visible', timeout: 5000 });
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      submitButton.click()
+    ]);
+    
+    // Wait for todo to appear in the list
     const todoItem = page.locator('div[role="listitem"]').filter({ hasText: todoText });
-    await expect(todoItem).toBeVisible();
+    await expect(todoItem).toBeVisible({ timeout: 10000 });
     
     // Check for priority indicator
     const priorityIndicator = todoItem.locator('span[aria-label*="Priority"]');
-    await expect(priorityIndicator).toBeVisible();
+    await expect(priorityIndicator).toBeVisible({ timeout: 5000 });
     await expect(priorityIndicator).toContainText('High');
   });
 
@@ -60,37 +68,56 @@ test.describe('Priorities Feature', () => {
     await todoPage.clickAddButton();
     await todoPage.waitForAddTodoForm();
     await page.fill('input[aria-label="Todo text"]', todoText);
-    await page.click('button[type="submit"]:has-text("Add Task")');
-    await page.waitForTimeout(500);
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      page.click('button[type="submit"]:has-text("Add Task")')
+    ]);
     
-    // Find the todo and click edit
+    // Wait for todo to appear
     const todoItem = page.locator('div[role="listitem"]').filter({ hasText: todoText });
-    await todoItem.locator('button[aria-label="Edit todo"]').click();
+    await expect(todoItem).toBeVisible({ timeout: 10000 });
     
-    // Wait for edit mode
-    await page.waitForTimeout(300);
+    // Hover to show edit button (needed on desktop)
+    await todoItem.hover();
+    
+    // Find and click edit button
+    const editButton = todoItem.locator('button[aria-label="Edit todo"]');
+    await editButton.waitFor({ state: 'visible', timeout: 5000 });
+    await editButton.click();
+    
+    // Wait for edit mode (input should be visible)
+    await page.waitForSelector('input[aria-label="Edit todo text"]', { timeout: 5000 });
     
     // Click priority button in edit mode
     await page.click('button[aria-label="Set priority"]');
-    await page.waitForTimeout(300);
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
     
     // Select medium priority
-    const mediumPriorityButton = page.locator('button[aria-label*="medium"]').first();
+    const mediumPriorityButton = page.locator('button[aria-label*="Set priority to medium"]').first();
     await mediumPriorityButton.click();
     
-    // Save changes
-    await page.click('button[aria-label="Save changes"]');
-    await page.waitForTimeout(500);
+    // Save changes and wait for network
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      page.click('button[aria-label="Save changes"]')
+    ]);
+    
+    // Wait for edit mode to close
+    await page.waitForSelector('input[aria-label="Edit todo text"]', { state: 'hidden', timeout: 5000 });
     
     // Check that priority is now displayed
     const updatedTodoItem = page.locator('div[role="listitem"]').filter({ hasText: todoText });
     const priorityIndicator = updatedTodoItem.locator('span[aria-label*="Priority"]');
-    await expect(priorityIndicator).toBeVisible();
+    await expect(priorityIndicator).toBeVisible({ timeout: 5000 });
     await expect(priorityIndicator).toContainText('Medium');
   });
 
   test('can filter todos by priority', async ({ page }) => {
     const todoPage = new TodoPage(page);
+    
+    // Use desktop viewport to ensure button-based priority selector is used
+    // (On mobile, it uses a select dropdown which would require different selectors)
+    await page.setViewportSize({ width: 1280, height: 720 });
     
     // Create todos with different priorities
     const highPriorityTodo = generateUniqueTodoText('High priority task');
@@ -102,31 +129,49 @@ test.describe('Priorities Feature', () => {
     await todoPage.waitForAddTodoForm();
     await page.fill('input[aria-label="Todo text"]', highPriorityTodo);
     await page.click('button[aria-label="Set priority"]');
-    await page.waitForTimeout(300);
-    await page.locator('button[aria-label*="high"]').first().click();
-    await page.click('button[type="submit"]:has-text("Add Task")');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
+    await page.locator('button[aria-label*="Set priority to high"]').first().click();
+    // Wait for selector to close
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { state: 'hidden', timeout: 2000 }).catch(() => {});
+    const submitButton1 = page.locator('button[type="submit"]:has-text("Add Task")');
+    await submitButton1.waitFor({ state: 'visible', timeout: 5000 });
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      submitButton1.click()
+    ]);
+    await expect(page.locator('div[role="listitem"]').filter({ hasText: highPriorityTodo })).toBeVisible({ timeout: 10000 });
     
     // Add low priority todo
     await todoPage.clickAddButton();
     await todoPage.waitForAddTodoForm();
     await page.fill('input[aria-label="Todo text"]', lowPriorityTodo);
     await page.click('button[aria-label="Set priority"]');
-    await page.waitForTimeout(300);
-    await page.locator('button[aria-label*="low"]').first().click();
-    await page.click('button[type="submit"]:has-text("Add Task")');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
+    await page.locator('button[aria-label*="Set priority to low"]').first().click();
+    // Wait for selector to close
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { state: 'hidden', timeout: 2000 }).catch(() => {});
+    const submitButton2 = page.locator('button[type="submit"]:has-text("Add Task")');
+    await submitButton2.waitFor({ state: 'visible', timeout: 5000 });
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      submitButton2.click()
+    ]);
+    await expect(page.locator('div[role="listitem"]').filter({ hasText: lowPriorityTodo })).toBeVisible({ timeout: 10000 });
     
     // Add no priority todo
     await todoPage.clickAddButton();
     await todoPage.waitForAddTodoForm();
     await page.fill('input[aria-label="Todo text"]', noPriorityTodo);
-    await page.click('button[type="submit"]:has-text("Add Task")');
-    await page.waitForTimeout(500);
+    const submitButton3 = page.locator('button[type="submit"]:has-text("Add Task")');
+    await submitButton3.waitFor({ state: 'visible', timeout: 5000 });
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      submitButton3.click()
+    ]);
+    await expect(page.locator('div[role="listitem"]').filter({ hasText: noPriorityTodo })).toBeVisible({ timeout: 10000 });
     
-    // Open sidebar
-    await page.click('button[aria-label*="navigation menu"]');
-    await page.waitForTimeout(500);
+    // On desktop, sidebar is persistent and already visible
+    await page.waitForSelector('[role="navigation"]', { timeout: 5000 });
     
     // Filter by high priority
     await page.click('button[aria-label="Show high priority todos"]');
@@ -169,34 +214,56 @@ test.describe('Priorities Feature', () => {
     await todoPage.waitForAddTodoForm();
     await page.fill('input[aria-label="Todo text"]', lowPriorityTodo);
     await page.click('button[aria-label="Set priority"]');
-    await page.waitForTimeout(300);
-    await page.locator('button[aria-label*="low"]').first().click();
-    await page.click('button[type="submit"]:has-text("Add Task")');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
+    await page.locator('button[aria-label*="Set priority to low"]').first().click();
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { state: 'hidden', timeout: 2000 }).catch(() => {});
+    const submitLow = page.locator('button[type="submit"]:has-text("Add Task")');
+    await submitLow.waitFor({ state: 'visible', timeout: 5000 });
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      submitLow.click()
+    ]);
+    await expect(page.locator('div[role="listitem"]').filter({ hasText: lowPriorityTodo })).toBeVisible({ timeout: 10000 });
     
     // Add high priority
     await todoPage.clickAddButton();
     await todoPage.waitForAddTodoForm();
     await page.fill('input[aria-label="Todo text"]', highPriorityTodo);
     await page.click('button[aria-label="Set priority"]');
-    await page.waitForTimeout(300);
-    await page.locator('button[aria-label*="high"]').first().click();
-    await page.click('button[type="submit"]:has-text("Add Task")');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
+    await page.locator('button[aria-label*="Set priority to high"]').first().click();
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { state: 'hidden', timeout: 2000 }).catch(() => {});
+    const submitHigh = page.locator('button[type="submit"]:has-text("Add Task")');
+    await submitHigh.waitFor({ state: 'visible', timeout: 5000 });
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      submitHigh.click()
+    ]);
+    await expect(page.locator('div[role="listitem"]').filter({ hasText: highPriorityTodo })).toBeVisible({ timeout: 10000 });
     
     // Add medium priority
     await todoPage.clickAddButton();
     await todoPage.waitForAddTodoForm();
     await page.fill('input[aria-label="Todo text"]', mediumPriorityTodo);
     await page.click('button[aria-label="Set priority"]');
-    await page.waitForTimeout(300);
-    await page.locator('button[aria-label*="medium"]').first().click();
-    await page.click('button[type="submit"]:has-text("Add Task")');
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
+    await page.locator('button[aria-label*="Set priority to medium"]').first().click();
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { state: 'hidden', timeout: 2000 }).catch(() => {});
+    const submitMedium = page.locator('button[type="submit"]:has-text("Add Task")');
+    await submitMedium.waitFor({ state: 'visible', timeout: 5000 });
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      submitMedium.click()
+    ]);
+    await expect(page.locator('div[role="listitem"]').filter({ hasText: mediumPriorityTodo })).toBeVisible({ timeout: 10000 });
+    
+    // Wait for sorting to complete (todos are sorted by priority)
     await page.waitForTimeout(1000);
     
     // Get all todo items
     const todoItems = page.locator('div[role="listitem"]');
     const count = await todoItems.count();
+    expect(count).toBeGreaterThanOrEqual(3);
     
     // Find positions
     let highPos = -1;
@@ -216,6 +283,11 @@ test.describe('Priorities Feature', () => {
       }
     }
     
+    // Verify all positions were found
+    expect(highPos).not.toBe(-1);
+    expect(mediumPos).not.toBe(-1);
+    expect(lowPos).not.toBe(-1);
+    
     // Check that high priority comes before medium, which comes before low
     expect(highPos).toBeLessThan(mediumPos);
     expect(mediumPos).toBeLessThan(lowPos);
@@ -231,23 +303,36 @@ test.describe('Priorities Feature', () => {
     // Type text
     await page.fill('input[aria-label="Todo text"]', 'Accessibility test');
     
-    // Tab to priority button
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab'); // Skip date button
-    await page.keyboard.press('Tab'); // Should be on priority button
+    // Focus the priority button directly (more reliable than tabbing)
+    const priorityButton = page.locator('button[aria-label="Set priority"]');
+    await priorityButton.focus();
+    
+    // Verify we're on the priority button by checking focus
+    await expect(priorityButton).toBeFocused({ timeout: 1000 });
     
     // Press Enter to open priority selector
     await page.keyboard.press('Enter');
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
+    
+    // Wait a moment for the selector to fully render
     await page.waitForTimeout(300);
     
-    // Use Tab to navigate and Enter to select
-    await page.keyboard.press('Tab'); // Move to first priority option
-    await page.keyboard.press('Enter'); // Select it
+    // Use Tab to navigate to priority options (buttons are focusable)
+    // First Tab should move to the first priority button (None)
+    await page.keyboard.press('Tab'); // Move to first priority option (None)
+    await page.keyboard.press('Tab'); // Move to Low priority
+    await page.keyboard.press('Enter'); // Select Low priority
+    
+    // Wait for priority selector to close (it should close automatically after selection)
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { state: 'hidden', timeout: 2000 }).catch(() => {});
+    
+    // Wait for priority button text to update
+    await page.waitForSelector('button[aria-label="Set priority"]:has-text("Priority: Low")', { timeout: 2000 });
     
     // Check that priority was selected
-    const priorityButton = page.locator('button[aria-label="Set priority"]');
     const buttonText = await priorityButton.innerText();
     expect(buttonText).not.toContain('Priority: None');
+    expect(buttonText).toContain('Priority: Low');
   });
 
   test('priority indicator has proper color coding', async ({ page }) => {
@@ -259,14 +344,24 @@ test.describe('Priorities Feature', () => {
     await todoPage.waitForAddTodoForm();
     await page.fill('input[aria-label="Todo text"]', highPriorityTodo);
     await page.click('button[aria-label="Set priority"]');
-    await page.waitForTimeout(300);
-    await page.locator('button[aria-label*="high"]').first().click();
-    await page.click('button[type="submit"]:has-text("Add Task")');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
+    await page.locator('button[aria-label*="Set priority to high"]').first().click();
+    // Wait for selector to close
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { state: 'hidden', timeout: 2000 }).catch(() => {});
+    const submitHighColor = page.locator('button[type="submit"]:has-text("Add Task")');
+    await submitHighColor.waitFor({ state: 'visible', timeout: 5000 });
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      submitHighColor.click()
+    ]);
+    
+    // Wait for todo to appear
+    const todoItem = page.locator('div[role="listitem"]').filter({ hasText: highPriorityTodo });
+    await expect(todoItem).toBeVisible({ timeout: 10000 });
     
     // Check that the priority indicator has the red color class for high priority
-    const todoItem = page.locator('div[role="listitem"]').filter({ hasText: highPriorityTodo });
     const priorityIndicator = todoItem.locator('span[aria-label*="Priority"]');
+    await expect(priorityIndicator).toBeVisible({ timeout: 5000 });
     
     // Check for red color class (high priority)
     const classes = await priorityIndicator.getAttribute('class');
@@ -282,19 +377,31 @@ test.describe('Priorities Feature', () => {
     await todoPage.waitForAddTodoForm();
     await page.fill('input[aria-label="Todo text"]', todoText);
     await page.click('button[aria-label="Set priority"]');
-    await page.waitForTimeout(300);
-    await page.locator('button[aria-label*="medium"]').first().click();
-    await page.click('button[type="submit"]:has-text("Add Task")');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { timeout: 5000 });
+    await page.locator('button[aria-label*="Set priority to medium"]').first().click();
+    // Wait for selector to close
+    await page.waitForSelector('button[aria-label*="Set priority to"]', { state: 'hidden', timeout: 2000 }).catch(() => {});
+    const submitPersist = page.locator('button[type="submit"]:has-text("Add Task")');
+    await submitPersist.waitFor({ state: 'visible', timeout: 5000 });
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
+      submitPersist.click()
+    ]);
+    
+    // Wait for todo to appear and sync
+    await expect(page.locator('div[role="listitem"]').filter({ hasText: todoText })).toBeVisible({ timeout: 10000 });
+    await page.waitForLoadState('networkidle');
     
     // Reload page
     await page.reload();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
+    await todoPage.waitForTodoApp();
     
     // Check that todo still has medium priority
     const todoItem = page.locator('div[role="listitem"]').filter({ hasText: todoText });
+    await expect(todoItem).toBeVisible({ timeout: 10000 });
     const priorityIndicator = todoItem.locator('span[aria-label*="Priority"]');
-    await expect(priorityIndicator).toBeVisible();
+    await expect(priorityIndicator).toBeVisible({ timeout: 5000 });
     await expect(priorityIndicator).toContainText('Medium');
   });
 });

@@ -47,9 +47,83 @@ export async function logoutUser(page: Page): Promise<void> {
 
 /**
  * Wait for a specific amount of time
+ * @deprecated Use waitForElement, waitForNetworkIdle, or waitForStateChange instead
  */
 export async function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Wait for an element to appear/disappear instead of using fixed timeouts
+ */
+export async function waitForElement(
+  page: Page,
+  selector: string,
+  options?: { state?: 'visible' | 'hidden' | 'attached' | 'detached'; timeout?: number }
+): Promise<void> {
+  await page.waitForSelector(selector, {
+    state: options?.state || 'visible',
+    timeout: options?.timeout || 5000,
+  });
+}
+
+/**
+ * Wait for network to be idle (no requests for 500ms)
+ * Useful after actions that trigger API calls
+ */
+export async function waitForNetworkIdle(page: Page, timeout: number = 5000): Promise<void> {
+  await page.waitForLoadState('networkidle', { timeout });
+}
+
+/**
+ * Wait for a specific number of todos to appear
+ */
+export async function waitForTodoCount(
+  page: Page,
+  expectedCount: number,
+  timeout: number = 5000
+): Promise<void> {
+  const selector = '.group.flex.items-center.gap-3.px-4.py-3.bg-white.rounded-lg';
+  let attempts = 0;
+  const maxAttempts = timeout / 100;
+  
+  while (attempts < maxAttempts) {
+    const count = await page.locator(selector).count();
+    if (count === expectedCount) {
+      return;
+    }
+    await wait(100);
+    attempts++;
+  }
+  
+  throw new Error(`Expected ${expectedCount} todos but found ${await page.locator(selector).count()}`);
+}
+
+/**
+ * Wait for form to close (FAB button to reappear)
+ */
+export async function waitForFormToClose(page: Page, timeout: number = 5000): Promise<void> {
+  await page.waitForSelector('button[aria-label="Add new todo"]', {
+    state: 'visible',
+    timeout,
+  });
+}
+
+/**
+ * Wait for sync to complete by checking sync status indicator
+ */
+export async function waitForSyncComplete(page: Page, timeout: number = 10000): Promise<void> {
+  // Wait for sync status to show as synced or disappear
+  try {
+    await page.waitForSelector('[aria-label*="synced"], [aria-label*="Synced"]', {
+      state: 'visible',
+      timeout: 2000,
+    });
+  } catch {
+    // Sync indicator might not be visible, that's okay
+  }
+  // Additional small wait for any pending operations
+  await wait(200);
 }
 
 /**
