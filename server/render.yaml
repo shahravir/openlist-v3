@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: openlist-v3-server
+    env: node
+    rootDir: server
+    buildCommand: NODE_ENV=development npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+    database:
+      name: openlist-db
+
+databases:
+  - name: openlist-db
+    plan: free
+

@@ -27,6 +27,11 @@ const start = async () => {
       'http://localhost:3000',
     ];
     
+    // Add Render service URL if provided
+    if (process.env.RENDER_SERVICE_URL) {
+      allowedOrigins.push(process.env.RENDER_SERVICE_URL);
+    }
+    
     await fastify.register(cors, {
       origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps, Postman, etc.)
@@ -37,7 +42,11 @@ const start = async () => {
         if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
           return callback(null, true);
         }
-        // For development, allow all origins (remove in production)
+        // In production, also allow Render service URLs (for health checks, etc.)
+        if (process.env.NODE_ENV === 'production' && origin.includes('.onrender.com')) {
+          return callback(null, true);
+        }
+        // For development, allow all origins
         if (process.env.NODE_ENV !== 'production') {
           return callback(null, true);
         }

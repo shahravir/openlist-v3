@@ -333,7 +333,7 @@ export function setupWebSocket(fastify: FastifyInstance): void {
       });
 
       // Handle errors
-      connection.socket.on('error', (err) => {
+      connection.socket.on('error', (err: Error) => {
         if (fastify.log && typeof fastify.log.error === 'function') {
           fastify.log.error({ err, userId }, '[WEBSOCKET] Connection error');
         }
