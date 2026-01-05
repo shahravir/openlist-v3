@@ -27,9 +27,13 @@ A minimalist, production-ready todo list application optimized for mobile, iPad,
 npm install
 ```
 
-2. Create a `.env` file (optional, defaults to `http://localhost:3001/api`):
+2. Create a `.env` file (optional, defaults to production Render backend):
 ```
+# For local development, use your local backend:
 VITE_API_URL=http://localhost:3001/api
+
+# Or use the production backend (default):
+# VITE_API_URL=https://openlist-v3-server.onrender.com/api
 ```
 
 3. Run the development server:

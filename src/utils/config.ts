@@ -29,10 +29,10 @@ export function getApiBaseUrl(): string {
     return placeholder;
   }
 
-  // For web development, localhost works fine
-  const localhostUrl = 'http://localhost:3001/api';
-  console.log('[Config] Using localhost URL:', localhostUrl);
-  return localhostUrl;
+  // For web (browser), use the production Render backend URL
+  const productionUrl = 'https://openlist-v3-server.onrender.com/api';
+  console.log('[Config] Using production API URL:', productionUrl);
+  return productionUrl;
 }
 
 /**
@@ -46,11 +46,12 @@ export function getWebSocketUrl(): string {
 
   const apiUrl = getApiBaseUrl();
   
-  // Convert HTTP API URL to WebSocket URL
+  // Convert HTTP/HTTPS API URL to WebSocket URL
   // http://localhost:3001/api -> ws://localhost:3001/ws
+  // https://openlist-v3-server.onrender.com/api -> wss://openlist-v3-server.onrender.com/ws
   // http://192.168.1.100:3001/api -> ws://192.168.1.100:3001/ws
   const wsUrl = apiUrl
-    .replace(/^http/, 'ws')
+    .replace(/^https?/, (match) => match === 'https' ? 'wss' : 'ws')
     .replace(/\/api$/, '/ws');
   
   return wsUrl;
