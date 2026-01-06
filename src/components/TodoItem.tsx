@@ -11,12 +11,14 @@ import { DatePicker } from './DatePicker';
 import { PrioritySelector, Priority, priorityConfig } from './PrioritySelector';
 import { parseDateFromText } from '../utils/dateParser';
 import { parsePriorityFromText } from '../utils/priorityParser';
+import { parseTagsFromText, extractUniqueTagNames } from '../utils/tagParser';
+import { TagChip } from './TagChip';
 
 interface TodoItemProps {
   todo: Todo;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, text: string, dueDate?: number | null, priority?: Priority) => void;
+  onUpdate: (id: string, text: string, dueDate?: number | null, priority?: Priority, tags?: string[]) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   canMoveUp: boolean;
@@ -31,10 +33,13 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   const [showPrioritySelector, setShowPrioritySelector] = useState(false);
   const [editDueDate, setEditDueDate] = useState<number | null>(todo.dueDate || null);
   const [editPriority, setEditPriority] = useState<Priority>(todo.priority || 'none');
+  const [editTags, setEditTags] = useState<string[]>(todo.tags || []);
   const [detectedDate, setDetectedDate] = useState<{ date: Date; dateText: string } | null>(null);
   const [detectedPriority, setDetectedPriority] = useState<{ priority: Priority; priorityText: string } | null>(null);
+  const [detectedTags, setDetectedTags] = useState<string[]>([]);
   const [showDatePreview, setShowDatePreview] = useState(false);
   const [showPriorityPreview, setShowPriorityPreview] = useState(false);
+  const [showTagsPreview, setShowTagsPreview] = useState(false);
   const [announcement, setAnnouncement] = useState<string>('');
   const [isNew, setIsNew] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,14 +70,15 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     }
   }, [todo.createdAt]);
 
-  // Update editText, editDueDate, and editPriority when todo changes externally (e.g., from sync)
+  // Update editText, editDueDate, editPriority, and editTags when todo changes externally (e.g., from sync)
   useEffect(() => {
     if (!isEditing) {
       setEditText(todo.text);
       setEditDueDate(todo.dueDate || null);
       setEditPriority(todo.priority || 'none');
+      setEditTags(todo.tags || []);
     }
-  }, [todo.text, todo.dueDate, todo.priority, isEditing]);
+  }, [todo.text, todo.dueDate, todo.priority, todo.tags, isEditing]);
 
   // Detect dates in the text as user types (only when editing and no manual date picker is set)
   useEffect(() => {
@@ -118,6 +124,24 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     }
   }, [detectedPriority, editPriority, todo.priority]);
 
+  // Detect tags in the text as user types (only when editing)
+  useEffect(() => {
+    if (isEditing && editText.trim()) {
+      const tagParseResult = parseTagsFromText(editText);
+      if (tagParseResult.parsedTags.length > 0) {
+        const uniqueTags = extractUniqueTagNames(tagParseResult.parsedTags);
+        setDetectedTags(uniqueTags);
+        setShowTagsPreview(true);
+      } else {
+        setDetectedTags([]);
+        setShowTagsPreview(false);
+      }
+    } else {
+      setDetectedTags([]);
+      setShowTagsPreview(false);
+    }
+  }, [editText, isEditing]);
+
   // Focus input when entering edit mode
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -135,6 +159,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     setEditText(todo.text);
     setEditDueDate(todo.dueDate || null);
     setEditPriority(todo.priority || 'none');
+    setEditTags(todo.tags || []);
     setIsEditing(true);
   };
 
@@ -147,18 +172,23 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       setShowDatePicker(false);
       setShowPrioritySelector(false);
       setDetectedDate(null);
+      setDetectedTags([]);
       setShowDatePreview(false);
+      setShowTagsPreview(false);
       return;
     }
     
-    // Always parse for dates and priority in the text (most reliable)
+    // Always parse for dates, priority, and tags in the text (most reliable)
     const dateParseResult = parseDateFromText(trimmedText);
     let textAfterDate = dateParseResult.cleanedText;
     const priorityParseResult = parsePriorityFromText(textAfterDate);
+    let textAfterPriority = priorityParseResult.cleanedText;
+    const tagParseResult = parseTagsFromText(textAfterPriority);
     
     let finalText = trimmedText;
     let finalDueDate: number | null = null;
     let finalPriority: Priority = editPriority;
+    let finalTags: string[] = editTags;
 
     // Priority: detected date from text > manual date picker (if changed) > existing date
     if (dateParseResult.parsedDate) {
@@ -198,19 +228,34 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       finalPriority = todo.priority || 'none';
     }
 
+    // Tags: detected tags from text (@mentions) > existing tags
+    if (tagParseResult.parsedTags.length > 0) {
+      // Tags detected in text - use them and remove from text
+      finalText = tagParseResult.cleanedText.trim();
+      finalTags = extractUniqueTagNames(tagParseResult.parsedTags);
+      
+      // Ensure cleaned text is still valid
+      if (finalText.length < MIN_TODO_LENGTH) {
+        // If cleaning removed too much, keep original text but still apply tags
+        finalText = trimmedText;
+      }
+    }
+
     // Check if there are actual changes (using final cleaned text)
     const textChanged = finalText !== todo.text;
     const dateChanged = (finalDueDate ?? null) !== (todo.dueDate ?? null);
     const priorityChanged = finalPriority !== (todo.priority || 'none');
+    const tagsChanged = JSON.stringify(finalTags.sort()) !== JSON.stringify((todo.tags || []).sort());
     
-    // Always save if a date or priority was detected from text, even if text is the same
-    // This ensures dates and priorities are always applied when mentioned in the text
+    // Always save if a date, priority, or tags were detected from text, even if text is the same
+    // This ensures dates, priorities, and tags are always applied when mentioned in the text
     const dateWasDetected = dateParseResult.parsedDate !== null;
     const priorityWasDetected = priorityParseResult.parsedPriority !== null;
+    const tagsWereDetected = tagParseResult.parsedTags.length > 0;
     
-    // Save if there are any changes (text, date, or priority) OR if a date/priority was detected
-    if (textChanged || dateChanged || priorityChanged || dateWasDetected || priorityWasDetected) {
-      onUpdate(todo.id, finalText, finalDueDate, finalPriority);
+    // Save if there are any changes (text, date, priority, or tags) OR if any were detected
+    if (textChanged || dateChanged || priorityChanged || tagsChanged || dateWasDetected || priorityWasDetected || tagsWereDetected) {
+      onUpdate(todo.id, finalText, finalDueDate, finalPriority, finalTags);
     }
     
     setIsEditing(false);
@@ -218,6 +263,11 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     setShowPrioritySelector(false);
     setDetectedDate(null);
     setDetectedPriority(null);
+    setDetectedTags([]);
+    setShowDatePreview(false);
+    setShowPriorityPreview(false);
+    setShowTagsPreview(false);
+  };
     setShowDatePreview(false);
     setShowPriorityPreview(false);
   };
@@ -226,13 +276,16 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     setEditText(todo.text);
     setEditDueDate(todo.dueDate || null);
     setEditPriority(todo.priority || 'none');
+    setEditTags(todo.tags || []);
     setIsEditing(false);
     setShowDatePicker(false);
     setShowPrioritySelector(false);
     setDetectedDate(null);
     setDetectedPriority(null);
+    setDetectedTags([]);
     setShowDatePreview(false);
     setShowPriorityPreview(false);
+    setShowTagsPreview(false);
   };
 
   const handleRejectPriority = () => {
@@ -275,11 +328,11 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
                 maxLength={MAX_TODO_LENGTH}
                 className="w-full text-base text-gray-800 bg-transparent border-none outline-none px-0"
                 aria-label="Edit todo text"
-                aria-describedby={(showDatePreview || showPriorityPreview) ? 'edit-preview-info' : undefined}
+                aria-describedby={(showDatePreview || showPriorityPreview || showTagsPreview) ? 'edit-preview-info' : undefined}
               />
               
-              {/* Date and Priority previews */}
-              {(showDatePreview || showPriorityPreview) && (
+              {/* Date, Priority, and Tags previews */}
+              {(showDatePreview || showPriorityPreview || showTagsPreview) && (
                 <div
                   id="edit-preview-info"
                   className="absolute top-full left-0 right-0 mt-1 space-y-1 z-50"
@@ -324,6 +377,31 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
                           onClick={handleRejectPriority}
                           className="text-purple-600 hover:text-purple-800 text-xs underline"
                           aria-label="Remove detected priority"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Tags preview */}
+                  {showTagsPreview && detectedTags.length > 0 && (
+                    <div className="p-2 bg-green-50 border border-green-200 rounded-lg text-sm shadow-md">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-green-700 font-medium">Tags:</span>
+                          {detectedTags.map((tag) => (
+                            <TagChip key={tag} tag={tag} size="small" />
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDetectedTags([]);
+                            setShowTagsPreview(false);
+                          }}
+                          className="text-green-600 hover:text-green-800 text-xs underline whitespace-nowrap"
+                          aria-label="Remove detected tags"
                         >
                           Remove
                         </button>
@@ -510,6 +588,13 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
         </span>
         <div className="flex items-center gap-2 flex-wrap">
           {todo.dueDate && <DueDateIndicator dueDate={todo.dueDate} />}
+          {todo.tags && todo.tags.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap" role="list" aria-label="Tags">
+              {todo.tags.map((tag) => (
+                <TagChip key={tag} tag={tag} size="small" />
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <button
