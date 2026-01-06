@@ -467,7 +467,7 @@ export function useSync() {
     }
   }, [todos, isSyncing, wsConnected, setTodos, setSyncQueue, setLastSyncTime]);
 
-  const addTodo = useCallback((text: string, dueDate?: number | null, priority: 'none' | 'low' | 'medium' | 'high' = 'none') => {
+  const addTodo = useCallback((text: string, dueDate?: number | null, priority: 'none' | 'low' | 'medium' | 'high' = 'none', tags?: string[]) => {
     const now = Date.now();
     
     // Get the max order from existing todos to append at the end
@@ -480,6 +480,7 @@ export function useSync() {
       order: maxOrder + 1,
       priority,
       dueDate: dueDate || null,
+      tags: tags || [],
       createdAt: now,
       updatedAt: now,
     };
@@ -499,6 +500,7 @@ export function useSync() {
           completed: newTodo.completed,
           order: newTodo.order,
           due_date: newTodo.dueDate,
+          tags: newTodo.tags,
           createdAt: newTodo.createdAt,
           updatedAt: newTodo.updatedAt,
         },
@@ -551,6 +553,7 @@ export function useSync() {
             order: updated.order,
             priority: updated.priority,
             due_date: updated.dueDate,
+            tags: updated.tags,
             createdAt: updated.createdAt,
             updatedAt: updated.updatedAt,
           },
