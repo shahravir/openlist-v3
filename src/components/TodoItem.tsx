@@ -125,6 +125,7 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
   }, [detectedPriority, editPriority, todo.priority]);
 
   // Detect tags in the text as user types (only when editing)
+  // Also update editTags to include detected tags so they persist when saving
   useEffect(() => {
     if (isEditing && editText.trim()) {
       const tagParseResult = parseTagsFromText(editText);
@@ -132,6 +133,11 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
         const uniqueTags = extractUniqueTagNames(tagParseResult.parsedTags);
         setDetectedTags(uniqueTags);
         setShowTagsPreview(true);
+        // Merge detected tags with existing editTags to preserve all tags
+        setEditTags((prevTags) => {
+          const merged = [...new Set([...prevTags, ...uniqueTags])];
+          return merged;
+        });
       } else {
         setDetectedTags([]);
         setShowTagsPreview(false);
@@ -228,17 +234,25 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       finalPriority = todo.priority || 'none';
     }
 
-    // Tags: detected tags from text (@mentions) > existing tags
+    // Tags: merge detected tags from text (@mentions) with existing tags
     if (tagParseResult.parsedTags.length > 0) {
-      // Tags detected in text - use them and remove from text
+      // Tags detected in text - merge them with existing tags and remove from text
       finalText = tagParseResult.cleanedText.trim();
-      finalTags = extractUniqueTagNames(tagParseResult.parsedTags);
+      const detectedTags = extractUniqueTagNames(tagParseResult.parsedTags);
+      // Merge detected tags with existing tags from todo (not just editTags, to ensure we have all tags)
+      // This ensures that if user adds tags in multiple edit sessions, all tags are preserved
+      const existingTags = todo.tags || [];
+      const mergedTags = [...new Set([...existingTags, ...detectedTags])];
+      finalTags = mergedTags;
       
       // Ensure cleaned text is still valid
       if (finalText.length < MIN_TODO_LENGTH) {
         // If cleaning removed too much, keep original text but still apply tags
         finalText = trimmedText;
       }
+    } else {
+      // No tags detected - keep existing tags from todo
+      finalTags = todo.tags || [];
     }
 
     // Check if there are actual changes (using final cleaned text)
@@ -254,8 +268,11 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     const tagsWereDetected = tagParseResult.parsedTags.length > 0;
     
     // Save if there are any changes (text, date, priority, or tags) OR if any were detected
+    // Only include tags in the update if they've changed or were detected (to avoid clearing tags)
     if (textChanged || dateChanged || priorityChanged || tagsChanged || dateWasDetected || priorityWasDetected || tagsWereDetected) {
-      onUpdate(todo.id, finalText, finalDueDate, finalPriority, finalTags);
+      // Only pass tags if they were detected or changed, otherwise pass undefined to preserve existing tags
+      const tagsToUpdate = (tagsWereDetected || tagsChanged) ? finalTags : undefined;
+      onUpdate(todo.id, finalText, finalDueDate, finalPriority, tagsToUpdate);
     }
     
     setIsEditing(false);

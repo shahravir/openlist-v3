@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { WebSocket } from 'ws';
-import { todoQueries } from './db/queries.js';
+import { todoQueries, tagQueries } from './db/queries.js';
 import { randomUUID } from 'crypto';
 
 // Track active connections per user
@@ -212,7 +212,7 @@ export function setupWebSocket(fastify: FastifyInstance): void {
           // Process command
           try {
             if (command.type === 'todo:create') {
-              const { id, text, completed, order, due_date, priority, created_at, updated_at } = command.payload;
+              const { id, text, completed, order, due_date, priority, tags, created_at, updated_at } = command.payload;
               await todoQueries.bulkUpsert(userId, [{
                 id,
                 text,
@@ -224,17 +224,28 @@ export function setupWebSocket(fastify: FastifyInstance): void {
                 updated_at,
               }]);
               
+              // Update tags if provided
+              if (tags && Array.isArray(tags)) {
+                await tagQueries.setTagsForTodo(id, userId, tags);
+              }
+              
               const allTodos = await todoQueries.findByUserId(userId);
-              const todos = allTodos.map((todo) => ({
-                id: todo.id,
-                text: todo.text,
-                completed: todo.completed,
-                order: todo.order,
-                priority: todo.priority,
-                due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
-                created_at: new Date(todo.created_at).getTime(),
-                updated_at: new Date(todo.updated_at).getTime(),
-              }));
+              const todos = await Promise.all(
+                allTodos.map(async (todo) => {
+                  const todoTags = await tagQueries.getTagsForTodo(todo.id);
+                  return {
+                    id: todo.id,
+                    text: todo.text,
+                    completed: todo.completed,
+                    order: todo.order,
+                    priority: todo.priority,
+                    due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
+                    tags: todoTags.map(tag => tag.name),
+                    created_at: new Date(todo.created_at).getTime(),
+                    updated_at: new Date(todo.updated_at).getTime(),
+                  };
+                })
+              );
 
               broadcastToUser(
                 userId,
@@ -257,21 +268,32 @@ export function setupWebSocket(fastify: FastifyInstance): void {
                 }, '[WEBSOCKET] Create completed');
               }
             } else if (command.type === 'todo:update') {
-              const { id, text, completed, order, due_date, priority } = command.payload;
+              const { id, text, completed, order, due_date, priority, tags } = command.payload;
               const todo = await todoQueries.update(id, userId, text, completed, order, due_date, priority);
+              
+              // Update tags if provided
+              if (tags && Array.isArray(tags)) {
+                await tagQueries.setTagsForTodo(id, userId, tags);
+              }
               
               if (todo) {
                 const allTodos = await todoQueries.findByUserId(userId);
-                const todos = allTodos.map((t) => ({
-                  id: t.id,
-                  text: t.text,
-                  completed: t.completed,
-                  order: t.order,
-                  priority: t.priority,
-                  due_date: t.due_date ? new Date(t.due_date).getTime() : null,
-                  created_at: new Date(t.created_at).getTime(),
-                  updated_at: new Date(t.updated_at).getTime(),
-                }));
+                const todos = await Promise.all(
+                  allTodos.map(async (t) => {
+                    const todoTags = await tagQueries.getTagsForTodo(t.id);
+                    return {
+                      id: t.id,
+                      text: t.text,
+                      completed: t.completed,
+                      order: t.order,
+                      priority: t.priority,
+                      due_date: t.due_date ? new Date(t.due_date).getTime() : null,
+                      tags: todoTags.map(tag => tag.name),
+                      created_at: new Date(t.created_at).getTime(),
+                      updated_at: new Date(t.updated_at).getTime(),
+                    };
+                  })
+                );
 
                 broadcastToUser(
                   userId,
