@@ -122,6 +122,7 @@ class ApiClient {
         order: number;
         priority: 'none' | 'low' | 'medium' | 'high';
         due_date?: number | null;
+        tags?: string[];
         created_at: number;
         updated_at: number;
       }>;
@@ -133,6 +134,7 @@ class ApiClient {
         order: todo.order,
         priority: todo.priority,
         due_date: todo.dueDate,
+        tags: todo.tags,
         created_at: todo.createdAt,
         updated_at: todo.updatedAt,
       })),
@@ -145,12 +147,13 @@ class ApiClient {
       order: todo.order,
       priority: todo.priority,
       dueDate: todo.due_date,
+      tags: todo.tags,
       createdAt: todo.created_at,
       updatedAt: todo.updated_at,
     }));
   }
 
-  async updateTodo(id: string, text: string, completed: boolean, order?: number, dueDate?: number | null, priority?: 'none' | 'low' | 'medium' | 'high'): Promise<Todo> {
+  async updateTodo(id: string, text: string, completed: boolean, order?: number, dueDate?: number | null, priority?: 'none' | 'low' | 'medium' | 'high', tags?: string[]): Promise<Todo> {
     const response = await this.client.put<{
       id: string;
       text: string;
@@ -158,9 +161,10 @@ class ApiClient {
       order: number;
       priority: 'none' | 'low' | 'medium' | 'high';
       due_date?: number | null;
+      tags?: string[];
       created_at: number;
       updated_at: number;
-    }>(`/todos/${id}`, { text, completed, order, priority, due_date: dueDate });
+    }>(`/todos/${id}`, { text, completed, order, priority, due_date: dueDate, tags });
     return {
       id: response.data.id,
       text: response.data.text,
@@ -168,6 +172,7 @@ class ApiClient {
       order: response.data.order,
       priority: response.data.priority,
       dueDate: response.data.due_date,
+      tags: response.data.tags,
       createdAt: response.data.created_at,
       updatedAt: response.data.updated_at,
     };
@@ -175,6 +180,26 @@ class ApiClient {
 
   async deleteTodo(id: string): Promise<void> {
     await this.client.delete(`/todos/${id}`);
+  }
+
+  // Tag endpoints
+  async getTags(): Promise<Array<{ id: string; name: string; color: string; created_at: number }>> {
+    const response = await this.client.get<{ tags: Array<{ id: string; name: string; color: string; created_at: number }> }>('/tags');
+    return response.data.tags;
+  }
+
+  async createTag(name: string, color?: string): Promise<{ id: string; name: string; color: string; created_at: number }> {
+    const response = await this.client.post<{ id: string; name: string; color: string; created_at: number }>('/tags', { name, color });
+    return response.data;
+  }
+
+  async updateTag(id: string, name?: string, color?: string): Promise<{ id: string; name: string; color: string; created_at: number }> {
+    const response = await this.client.put<{ id: string; name: string; color: string; created_at: number }>(`/tags/${id}`, { name, color });
+    return response.data;
+  }
+
+  async deleteTag(id: string): Promise<void> {
+    await this.client.delete(`/tags/${id}`);
   }
 }
 

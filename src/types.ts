@@ -5,6 +5,7 @@ export interface Todo {
   order: number;
   priority: 'none' | 'low' | 'medium' | 'high';
   dueDate?: number | null;
+  tags?: string[];
   createdAt: number;
   updatedAt: number;
   userId?: string; // Optional, for local-only todos before sync
