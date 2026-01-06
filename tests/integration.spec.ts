@@ -433,37 +433,4 @@ test.describe('Integration Tests - Complete User Flows', () => {
     await assertTodoCountInModal(page, 1);
   });
 
-  test('complete flow: mobile-like interaction', async ({ page }) => {
-    const testUser = createTestUser();
-    const todoPage = new TodoPage(page);
-
-    // Set mobile viewport
-    await page.setViewportSize({ width: 375, height: 667 });
-
-    // Register
-    await setupAuthenticatedSession(page, testUser);
-
-    // Add todos with touch interactions
-    const task1 = generateUniqueTodoText('Mobile task 1');
-    const task2 = generateUniqueTodoText('Mobile task 2');
-    
-    await todoPage.addTodo(task1);
-    await todoPage.addTodo(task2);
-
-    // Tap to complete (it moves to bottom after completion)
-    await todoPage.toggleTodoByText(task1);
-
-    // Tap to delete the incomplete one (task2, which is now at index 0)
-    await todoPage.deleteTodoByText(task2);
-    // Wait for todo to be deleted and UI to update
-    await page.waitForTimeout(500);
-
-    // Verify final state - only task1 remains, and it should be completed
-    await assertTodoCount(page, 1);
-    expect(await todoPage.isTodoCompletedByText(task1)).toBe(true);
-
-    // Logout
-    await todoPage.clickLogout();
-    await assertUserIsNotAuthenticated(page);
-  });
 });

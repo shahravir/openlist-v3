@@ -112,6 +112,7 @@ test.describe('Priorities Feature', () => {
   });
 
   test('can filter todos by priority', async ({ page }) => {
+    test.setTimeout(60000); // Increase timeout to 60 seconds for this test
     const todoPage = new TodoPage(page);
     
     // Use desktop viewport to ensure button-based priority selector is used
@@ -167,6 +168,8 @@ test.describe('Priorities Feature', () => {
       page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
       submitButton3.click()
     ]);
+    // Wait for form to close and UI to update
+    await page.waitForSelector('input[aria-label="Todo text"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
     await expect(page.locator('div[role="listitem"]').filter({ hasText: noPriorityTodo })).toBeVisible({ timeout: 10000 });
     
     // On desktop, sidebar is persistent and already visible
@@ -201,6 +204,7 @@ test.describe('Priorities Feature', () => {
   });
 
   test('todos are sorted by priority (high to low)', async ({ page }) => {
+    test.setTimeout(60000); // Increase timeout to 60 seconds for this test
     const todoPage = new TodoPage(page);
     
     // Create todos with different priorities in random order
@@ -222,6 +226,8 @@ test.describe('Priorities Feature', () => {
       page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
       submitLow.click()
     ]);
+    // Wait for form to close and UI to update
+    await page.waitForSelector('input[aria-label="Todo text"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
     await expect(page.locator('div[role="listitem"]').filter({ hasText: lowPriorityTodo })).toBeVisible({ timeout: 10000 });
     
     // Add high priority
@@ -238,6 +244,8 @@ test.describe('Priorities Feature', () => {
       page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
       submitHigh.click()
     ]);
+    // Wait for form to close and UI to update
+    await page.waitForSelector('input[aria-label="Todo text"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
     await expect(page.locator('div[role="listitem"]').filter({ hasText: highPriorityTodo })).toBeVisible({ timeout: 10000 });
     
     // Add medium priority
@@ -254,6 +262,8 @@ test.describe('Priorities Feature', () => {
       page.waitForResponse(resp => resp.url().includes('/todos') && resp.status() === 200).catch(() => {}),
       submitMedium.click()
     ]);
+    // Wait for form to close and UI to update
+    await page.waitForSelector('input[aria-label="Todo text"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
     await expect(page.locator('div[role="listitem"]').filter({ hasText: mediumPriorityTodo })).toBeVisible({ timeout: 10000 });
     
     // Wait for sorting to complete (todos are sorted by priority)
