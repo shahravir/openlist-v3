@@ -108,49 +108,46 @@ export function TodoInput({ onAdd }: TodoInputProps) {
               {/* Date preview */}
               {showDatePreview && detectedDate && (
                 <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm shadow-md">
-              role="status"
-              aria-live="polite"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-blue-700 font-medium flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span>Due: {detectedDate.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleRejectDate}
-                  className="text-blue-600 hover:text-blue-800 text-xs underline"
-                  aria-label="Remove detected due date"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {/* Tags preview */}
-          {showTagsPreview && detectedTags.length > 0 && (
-            <div className="p-2 bg-green-50 border border-green-200 rounded-lg text-sm shadow-md">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-green-700 font-medium">Tags:</span>
-                  {detectedTags.map((tag) => (
-                    <TagChip key={tag} tag={tag} size="small" />
-                  ))}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-blue-700 font-medium flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>Due: {detectedDate.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRejectDate}
+                      className="text-blue-600 hover:text-blue-800 text-xs underline"
+                      aria-label="Remove detected due date"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleRejectTags}
-                  className="text-green-600 hover:text-green-800 text-xs underline whitespace-nowrap"
-                  aria-label="Remove detected tags"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          )}
+              )}
+          
+              {/* Tags preview */}
+              {showTagsPreview && detectedTags.length > 0 && (
+                <div className="p-2 bg-green-50 border border-green-200 rounded-lg text-sm shadow-md">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-green-700 font-medium">Tags:</span>
+                      {detectedTags.map((tag) => (
+                        <TagChip key={tag} tag={tag} size="small" />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRejectTags}
+                      className="text-green-600 hover:text-green-800 text-xs underline whitespace-nowrap"
+                      aria-label="Remove detected tags"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

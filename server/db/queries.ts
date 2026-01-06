@@ -341,11 +341,13 @@ export const tagQueries = {
             tag = result.rows[0];
           }
           
-          // Link tag to todo
-          await client.query(
-            'INSERT INTO todo_tags (todo_id, tag_id) VALUES ($1, $2) ON CONFLICT (todo_id, tag_id) DO NOTHING',
-            [todoId, tag.id]
-          );
+          // Link tag to todo (only if tag exists)
+          if (tag) {
+            await client.query(
+              'INSERT INTO todo_tags (todo_id, tag_id) VALUES ($1, $2) ON CONFLICT (todo_id, tag_id) DO NOTHING',
+              [todoId, tag.id]
+            );
+          }
         }
       }
 

@@ -268,9 +268,6 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     setShowPriorityPreview(false);
     setShowTagsPreview(false);
   };
-    setShowDatePreview(false);
-    setShowPriorityPreview(false);
-  };
 
   const handleCancel = () => {
     setEditText(todo.text);
@@ -301,6 +298,25 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
     } else if (e.key === 'Escape') {
       e.preventDefault();
       handleCancel();
+    }
+  };
+
+  // Get checkbox border color based on priority
+  const getCheckboxBorderClass = () => {
+    if (todo.completed) {
+      return 'bg-primary-500 border-primary-500';
+    }
+    
+    const priority = todo.priority || 'none';
+    switch (priority) {
+      case 'low':
+        return 'border-green-500 hover:border-green-600';
+      case 'medium':
+        return 'border-amber-500 hover:border-amber-600';
+      case 'high':
+        return 'border-red-500 hover:border-red-600';
+      default:
+        return 'border-gray-300 hover:border-primary-400';
     }
   };
 
@@ -500,25 +516,6 @@ export function TodoItem({ todo, onToggle, onDelete, onUpdate, onMoveUp, onMoveD
       </>
     );
   }
-
-  // Get checkbox border color based on priority
-  const getCheckboxBorderClass = () => {
-    if (todo.completed) {
-      return 'bg-primary-500 border-primary-500';
-    }
-    
-    const priority = todo.priority || 'none';
-    switch (priority) {
-      case 'low':
-        return 'border-green-500 hover:border-green-600';
-      case 'medium':
-        return 'border-amber-500 hover:border-amber-600';
-      case 'high':
-        return 'border-red-500 hover:border-red-600';
-      default:
-        return 'border-gray-300 hover:border-primary-400';
-    }
-  };
 
   return (
     <div 
