@@ -133,7 +133,7 @@ export function useSync() {
         } else {
           // Conflict resolution: use server version if it's newer or equal
           if (serverTodo.updatedAt >= localTodo.updatedAt) {
-            // Use server version, but preserve local dueDate and priority if server version doesn't have them
+            // Use server version, but preserve local dueDate, priority, and tags if server version doesn't have them
             // and timestamps are equal (meaning no actual update happened on server)
             const mergedTodo = {
               ...serverTodo,
@@ -155,6 +155,25 @@ export function useSync() {
                          localTodo.priority && localTodo.priority !== 'none')
                 ? localTodo.priority
                 : (serverTodo.priority ?? 'none'),
+              // Preserve local tags if:
+              // 1. Server has empty/undefined tags
+              // 2. Local has tags
+              // 3. Timestamps are equal (no actual server update happened) - means server hasn't synced tags yet
+              // OR if server timestamp is only slightly newer (within 2 seconds) - likely a race condition
+              // This prevents losing tags when server sync returns stale data or hasn't synced tags yet
+              tags: (() => {
+                const timeDiff = serverTodo.updatedAt - localTodo.updatedAt;
+                const isLikelyRaceCondition = timeDiff >= 0 && timeDiff < 2000; // Within 2 seconds
+                if ((!serverTodo.tags || serverTodo.tags.length === 0) && 
+                    localTodo.tags && localTodo.tags.length > 0 &&
+                    (serverTodo.updatedAt === localTodo.updatedAt || isLikelyRaceCondition)) {
+                  return localTodo.tags;
+                }
+                if (serverTodo.tags && serverTodo.tags.length > 0) {
+                  return serverTodo.tags;
+                }
+                return localTodo.tags ?? [];
+              })(),
             };
             merged.set(serverTodo.id, mergedTodo);
             if (serverTodo.updatedAt > localTodo.updatedAt) {
