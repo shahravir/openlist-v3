@@ -1,5 +1,6 @@
 import pool from './connection.js';
 import { Todo, User, Tag } from '../types.js';
+import { generateTagColor } from '../utils/tagColor.js';
 
 export const userQueries = {
   async findByEmail(email: string): Promise<User | null> {
@@ -360,27 +361,4 @@ export const tagQueries = {
     }
   },
 };
-
-// Helper function to generate consistent colors for tags
-function generateTagColor(tagName: string): string {
-  const colors = [
-    '#EF4444', // red
-    '#F59E0B', // amber
-    '#10B981', // green
-    '#3B82F6', // blue
-    '#8B5CF6', // purple
-    '#EC4899', // pink
-    '#06B6D4', // cyan
-    '#F97316', // orange
-    '#84CC16', // lime
-    '#6366F1', // indigo
-  ];
-  
-  // Generate a deterministic color based on tag name
-  let hash = 0;
-  for (let i = 0; i < tagName.length; i++) {
-    hash = tagName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-}
 

@@ -40,7 +40,9 @@ export function parseTagsFromText(text: string): TagParseResult {
   // Remove tag mentions from text
   let cleanedText = text;
   for (const { tagText } of parsedTags) {
-    cleanedText = cleanedText.replace(tagText, '').trim();
+    // Use global regex to replace all occurrences
+    const escapedTag = tagText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    cleanedText = cleanedText.replace(new RegExp(escapedTag, 'g'), '').trim();
   }
   
   // Clean up extra whitespace

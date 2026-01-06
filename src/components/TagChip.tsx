@@ -32,7 +32,7 @@ export function TagChip({ tag, onRemove, size = 'medium' }: TagChipProps) {
             e.stopPropagation();
             onRemove();
           }}
-          className="ml-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-1 rounded-full"
+          className="ml-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-0 rounded-full"
           style={{ color: color.text }}
           aria-label={`Remove tag ${tag}`}
           type="button"
