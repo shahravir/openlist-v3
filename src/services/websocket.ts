@@ -19,6 +19,7 @@ interface Command {
     order?: number;
     priority?: 'none' | 'low' | 'medium' | 'high';
     due_date?: number | null;
+    tags?: string[];
     createdAt: number;
     updatedAt: number;
   };

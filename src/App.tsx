@@ -173,18 +173,22 @@ function App() {
     }
   }, [todos, updateTodo, addUndoAction]);
 
-  const handleUpdate = useCallback((id: string, text: string, dueDate?: number | null, priority?: 'none' | 'low' | 'medium' | 'high') => {
+  const handleUpdate = useCallback((id: string, text: string, dueDate?: number | null, priority?: 'none' | 'low' | 'medium' | 'high', tags?: string[]) => {
     const todo = todos.find((t) => t.id === id);
     if (todo) {
       const textChanged = text !== todo.text;
       const dateChanged = (dueDate ?? null) !== (todo.dueDate ?? null);
       const priorityChanged = priority !== undefined && priority !== (todo.priority ?? 'none');
+      const tagsChanged = tags !== undefined && JSON.stringify(tags.sort()) !== JSON.stringify((todo.tags || []).sort());
       
-      if (textChanged || dateChanged || priorityChanged) {
+      if (textChanged || dateChanged || priorityChanged || tagsChanged) {
         const previousText = todo.text;
         const updates: Partial<typeof todo> = { text, dueDate: dueDate ?? null };
         if (priority !== undefined) {
           updates.priority = priority;
+        }
+        if (tags !== undefined) {
+          updates.tags = tags;
         }
         updateTodo(id, updates);
         

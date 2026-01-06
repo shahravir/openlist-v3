@@ -12,7 +12,7 @@ interface SearchModalProps {
   filteredTodos: Todo[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, text: string, dueDate?: number | null, priority?: Priority) => void;
+  onUpdate: (id: string, text: string, dueDate?: number | null, priority?: Priority, tags?: string[]) => void;
   onReorder: (reorderedTodos: Todo[]) => void;
 }
 

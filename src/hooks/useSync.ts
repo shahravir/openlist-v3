@@ -133,7 +133,7 @@ export function useSync() {
         } else {
           // Conflict resolution: use server version if it's newer or equal
           if (serverTodo.updatedAt >= localTodo.updatedAt) {
-            // Use server version, but preserve local dueDate and priority if server version doesn't have them
+            // Use server version, but preserve local dueDate, priority, and tags if server version doesn't have them
             // and timestamps are equal (meaning no actual update happened on server)
             const mergedTodo = {
               ...serverTodo,
@@ -155,6 +155,25 @@ export function useSync() {
                          localTodo.priority && localTodo.priority !== 'none')
                 ? localTodo.priority
                 : (serverTodo.priority ?? 'none'),
+              // Preserve local tags if:
+              // 1. Server has empty/undefined tags
+              // 2. Local has tags
+              // 3. Timestamps are equal (no actual server update happened) - means server hasn't synced tags yet
+              // OR if server timestamp is only slightly newer (within 2 seconds) - likely a race condition
+              // This prevents losing tags when server sync returns stale data or hasn't synced tags yet
+              tags: (() => {
+                const timeDiff = serverTodo.updatedAt - localTodo.updatedAt;
+                const isLikelyRaceCondition = timeDiff >= 0 && timeDiff < 2000; // Within 2 seconds
+                if ((!serverTodo.tags || serverTodo.tags.length === 0) && 
+                    localTodo.tags && localTodo.tags.length > 0 &&
+                    (serverTodo.updatedAt === localTodo.updatedAt || isLikelyRaceCondition)) {
+                  return localTodo.tags;
+                }
+                if (serverTodo.tags && serverTodo.tags.length > 0) {
+                  return serverTodo.tags;
+                }
+                return localTodo.tags ?? [];
+              })(),
             };
             merged.set(serverTodo.id, mergedTodo);
             if (serverTodo.updatedAt > localTodo.updatedAt) {
@@ -264,6 +283,7 @@ export function useSync() {
         order: item.order ?? 0,
         priority: item.priority ?? 'none',
         dueDate: item.due_date ?? item.dueDate ?? null,
+        tags: item.tags ?? [],
         createdAt: item.created_at ?? item.createdAt,
         updatedAt: item.updated_at ?? item.updatedAt,
         userId: item.userId,
@@ -467,7 +487,7 @@ export function useSync() {
     }
   }, [todos, isSyncing, wsConnected, setTodos, setSyncQueue, setLastSyncTime]);
 
-  const addTodo = useCallback((text: string, dueDate?: number | null, priority: 'none' | 'low' | 'medium' | 'high' = 'none') => {
+  const addTodo = useCallback((text: string, dueDate?: number | null, priority: 'none' | 'low' | 'medium' | 'high' = 'none', tags?: string[]) => {
     const now = Date.now();
     
     // Get the max order from existing todos to append at the end
@@ -480,6 +500,7 @@ export function useSync() {
       order: maxOrder + 1,
       priority,
       dueDate: dueDate || null,
+      tags: tags || [],
       createdAt: now,
       updatedAt: now,
     };
@@ -499,6 +520,7 @@ export function useSync() {
           completed: newTodo.completed,
           order: newTodo.order,
           due_date: newTodo.dueDate,
+          tags: newTodo.tags,
           createdAt: newTodo.createdAt,
           updatedAt: newTodo.updatedAt,
         },
@@ -551,6 +573,7 @@ export function useSync() {
             order: updated.order,
             priority: updated.priority,
             due_date: updated.dueDate,
+            tags: updated.tags,
             createdAt: updated.createdAt,
             updatedAt: updated.updatedAt,
           },
@@ -633,6 +656,9 @@ export function useSync() {
             text: todo.text,
             completed: todo.completed,
             order: todo.order,
+            priority: todo.priority,
+            due_date: todo.dueDate,
+            tags: todo.tags,
             createdAt: todo.createdAt,
             updatedAt: todo.updatedAt,
           },
@@ -669,6 +695,9 @@ export function useSync() {
           text: todo.text,
           completed: todo.completed,
           order: todo.order,
+          priority: todo.priority,
+          due_date: todo.dueDate,
+          tags: todo.tags,
           createdAt: todo.createdAt,
           updatedAt: todo.updatedAt,
         },

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { todoQueries } from '../db/queries.js';
+import { todoQueries, tagQueries } from '../db/queries.js';
 import { authenticate } from '../middleware/auth.js';
 import { SyncRequest, SyncResponse } from '../types.js';
 import { broadcastToUser } from '../websocket.js';
@@ -12,17 +12,26 @@ export async function todoRoutes(fastify: FastifyInstance) {
     const userId = request.user.userId;
     const todos = await todoQueries.findByUserId(userId);
 
+    // Get tags for each todo
+    const todosWithTags = await Promise.all(
+      todos.map(async (todo) => {
+        const tags = await tagQueries.getTagsForTodo(todo.id);
+        return {
+          id: todo.id,
+          text: todo.text,
+          completed: todo.completed,
+          order: todo.order,
+          priority: todo.priority,
+          due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
+          tags: tags.map(tag => tag.name),
+          created_at: new Date(todo.created_at).getTime(),
+          updated_at: new Date(todo.updated_at).getTime(),
+        };
+      })
+    );
+
     return {
-      todos: todos.map((todo) => ({
-        id: todo.id,
-        text: todo.text,
-        completed: todo.completed,
-        order: todo.order,
-        priority: todo.priority,
-        due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
-        created_at: new Date(todo.created_at).getTime(),
-        updated_at: new Date(todo.updated_at).getTime(),
-      })),
+      todos: todosWithTags,
     };
   });
 
@@ -48,21 +57,27 @@ export async function todoRoutes(fastify: FastifyInstance) {
     const serverTodos = await todoQueries.findByUserId(userId);
     console.log('Server todos:', serverTodos.length);
 
-    // Convert server todos to client format with timestamps
-    const serverTodosMap = new Map(
-      serverTodos.map((todo) => [
-        todo.id,
-        {
+    // Get tags for server todos
+    const serverTodosWithTags = await Promise.all(
+      serverTodos.map(async (todo) => {
+        const tags = await tagQueries.getTagsForTodo(todo.id);
+        return {
           id: todo.id,
           text: todo.text,
           completed: todo.completed,
           order: todo.order,
           priority: todo.priority,
           due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
+          tags: tags.map(tag => tag.name),
           created_at: new Date(todo.created_at).getTime(),
           updated_at: new Date(todo.updated_at).getTime(),
-        },
-      ])
+        };
+      })
+    );
+
+    // Convert server todos to client format with timestamps
+    const serverTodosMap = new Map(
+      serverTodosWithTags.map((todo) => [todo.id, todo])
     );
 
     // Merge client and server todos (last-write-wins based on updated_at)
@@ -117,21 +132,37 @@ export async function todoRoutes(fastify: FastifyInstance) {
     const upsertedTodos = await todoQueries.bulkUpsert(userId, todosToUpsert);
     console.log('Upserted todos:', upsertedTodos.length);
 
+    // Update tags for all todos
+    for (const todo of todosToUpsert) {
+      if (todo.tags && Array.isArray(todo.tags)) {
+        await tagQueries.setTagsForTodo(todo.id, userId, todo.tags);
+      }
+    }
+
     // Return final merged state from database
     const finalTodos = await todoQueries.findByUserId(userId);
     console.log('Final todos from DB:', finalTodos.length);
     
+    // Get tags for each todo
+    const todosWithTags = await Promise.all(
+      finalTodos.map(async (todo) => {
+        const tags = await tagQueries.getTagsForTodo(todo.id);
+        return {
+          id: todo.id,
+          text: todo.text,
+          completed: todo.completed,
+          order: todo.order,
+          priority: todo.priority,
+          due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
+          tags: tags.map(tag => tag.name),
+          created_at: new Date(todo.created_at).getTime(),
+          updated_at: new Date(todo.updated_at).getTime(),
+        };
+      })
+    );
+    
     const response: SyncResponse = {
-      todos: finalTodos.map((todo) => ({
-        id: todo.id,
-        text: todo.text,
-        completed: todo.completed,
-        order: todo.order,
-        priority: todo.priority,
-        due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
-        created_at: new Date(todo.created_at).getTime(),
-        updated_at: new Date(todo.updated_at).getTime(),
-      })),
+      todos: todosWithTags,
     };
 
     console.log('Sending response with', response.todos.length, 'todos');
@@ -172,13 +203,13 @@ export async function todoRoutes(fastify: FastifyInstance) {
   });
 
   // Update single todo
-  fastify.put<{ Params: { id: string }; Body: { text: string; completed: boolean; order?: number; priority?: 'none' | 'low' | 'medium' | 'high'; due_date?: number | null } }>(
+  fastify.put<{ Params: { id: string }; Body: { text: string; completed: boolean; order?: number; priority?: 'none' | 'low' | 'medium' | 'high'; due_date?: number | null; tags?: string[] } }>(
     '/todos/:id',
     { preHandler: authenticate },
     async (request, reply) => {
       const userId = request.user.userId;
       const { id } = request.params;
-      const { text, completed, order, priority, due_date } = request.body;
+      const { text, completed, order, priority, due_date, tags } = request.body;
       const correlationId = randomUUID();
       const syncMethod = 'http';
 
@@ -204,6 +235,14 @@ export async function todoRoutes(fastify: FastifyInstance) {
         return reply.code(404).send({ error: 'Todo not found' });
       }
 
+      // Update tags if provided
+      if (tags && Array.isArray(tags)) {
+        await tagQueries.setTagsForTodo(id, userId, tags);
+      }
+
+      // Get updated tags
+      const updatedTags = await tagQueries.getTagsForTodo(id);
+
       const todoResponse = {
         id: todo.id,
         text: todo.text,
@@ -211,6 +250,7 @@ export async function todoRoutes(fastify: FastifyInstance) {
         order: todo.order,
         priority: todo.priority,
         due_date: todo.due_date ? new Date(todo.due_date).getTime() : null,
+        tags: updatedTags.map(tag => tag.name),
         created_at: new Date(todo.created_at).getTime(),
         updated_at: new Date(todo.updated_at).getTime(),
       };

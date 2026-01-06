@@ -1,5 +1,6 @@
 import pool from './connection.js';
-import { Todo, User } from '../types.js';
+import { Todo, User, Tag } from '../types.js';
+import { generateTagColor } from '../utils/tagColor.js';
 
 export const userQueries = {
   async findByEmail(email: string): Promise<User | null> {
@@ -231,6 +232,133 @@ export const todoQueries = {
     }
 
     throw new Error('Max retries exceeded');
+  },
+};
+
+export const tagQueries = {
+  async findByUserId(userId: string): Promise<Tag[]> {
+    const result = await pool.query(
+      'SELECT * FROM tags WHERE user_id = $1 ORDER BY name ASC',
+      [userId]
+    );
+    return result.rows;
+  },
+
+  async findById(id: string, userId: string): Promise<Tag | null> {
+    const result = await pool.query(
+      'SELECT * FROM tags WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return result.rows[0] || null;
+  },
+
+  async findByName(name: string, userId: string): Promise<Tag | null> {
+    const result = await pool.query(
+      'SELECT * FROM tags WHERE name = $1 AND user_id = $2',
+      [name, userId]
+    );
+    return result.rows[0] || null;
+  },
+
+  async create(userId: string, name: string, color: string): Promise<Tag> {
+    const result = await pool.query(
+      'INSERT INTO tags (user_id, name, color) VALUES ($1, $2, $3) RETURNING *',
+      [userId, name, color]
+    );
+    return result.rows[0];
+  },
+
+  async update(id: string, userId: string, name: string, color: string): Promise<Tag | null> {
+    const result = await pool.query(
+      'UPDATE tags SET name = $1, color = $2 WHERE id = $3 AND user_id = $4 RETURNING *',
+      [name, color, id, userId]
+    );
+    return result.rows[0] || null;
+  },
+
+  async delete(id: string, userId: string): Promise<boolean> {
+    const result = await pool.query(
+      'DELETE FROM tags WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  },
+
+  async findOrCreate(userId: string, name: string, color: string): Promise<Tag> {
+    // Try to find existing tag first
+    const existing = await this.findByName(name, userId);
+    if (existing) {
+      return existing;
+    }
+    // Create new tag if it doesn't exist
+    return this.create(userId, name, color);
+  },
+
+  async getTagsForTodo(todoId: string): Promise<Tag[]> {
+    const result = await pool.query(
+      `SELECT t.* FROM tags t
+       INNER JOIN todo_tags tt ON t.id = tt.tag_id
+       WHERE tt.todo_id = $1
+       ORDER BY t.name ASC`,
+      [todoId]
+    );
+    return result.rows;
+  },
+
+  async addTagToTodo(todoId: string, tagId: string): Promise<void> {
+    await pool.query(
+      'INSERT INTO todo_tags (todo_id, tag_id) VALUES ($1, $2) ON CONFLICT (todo_id, tag_id) DO NOTHING',
+      [todoId, tagId]
+    );
+  },
+
+  async removeTagFromTodo(todoId: string, tagId: string): Promise<void> {
+    await pool.query(
+      'DELETE FROM todo_tags WHERE todo_id = $1 AND tag_id = $2',
+      [todoId, tagId]
+    );
+  },
+
+  async setTagsForTodo(todoId: string, userId: string, tagNames: string[]): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Remove all existing tags for this todo
+      await client.query('DELETE FROM todo_tags WHERE todo_id = $1', [todoId]);
+
+      // Add new tags
+      for (const tagName of tagNames) {
+        if (tagName.trim()) {
+          // Find or create tag
+          let tag = await this.findByName(tagName.trim(), userId);
+          if (!tag) {
+            // Auto-generate color for new tag
+            const color = generateTagColor(tagName);
+            const result = await client.query(
+              'INSERT INTO tags (user_id, name, color) VALUES ($1, $2, $3) ON CONFLICT (user_id, name) DO UPDATE SET user_id = EXCLUDED.user_id RETURNING *',
+              [userId, tagName.trim(), color]
+            );
+            tag = result.rows[0];
+          }
+          
+          // Link tag to todo (only if tag exists)
+          if (tag) {
+            await client.query(
+              'INSERT INTO todo_tags (todo_id, tag_id) VALUES ($1, $2) ON CONFLICT (todo_id, tag_id) DO NOTHING',
+              [todoId, tag.id]
+            );
+          }
+        }
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 };
 

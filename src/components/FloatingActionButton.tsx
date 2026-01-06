@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { Priority } from './PrioritySelector';
 
 interface FloatingActionButtonProps {
-  onAdd: (text: string, dueDate?: number | null, priority?: Priority) => void;
+  onAdd: (text: string, dueDate?: number | null, priority?: Priority, tags?: string[]) => void;
 }
 
 export function FloatingActionButton({ onAdd }: FloatingActionButtonProps) {
@@ -74,8 +74,8 @@ export function FloatingActionButton({ onAdd }: FloatingActionButtonProps) {
     setIsExpanded(true);
   };
 
-  const handleAdd = (text: string, dueDate?: number | null, priority?: Priority) => {
-    onAdd(text, dueDate, priority);
+  const handleAdd = (text: string, dueDate?: number | null, priority?: Priority, tags?: string[]) => {
+    onAdd(text, dueDate, priority, tags);
     setIsExpanded(false);
   };
 

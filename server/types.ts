@@ -17,6 +17,20 @@ export interface Todo {
   updated_at: Date;
 }
 
+export interface Tag {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string;
+  created_at: Date;
+}
+
+export interface TodoTag {
+  todo_id: string;
+  tag_id: string;
+  created_at: Date;
+}
+
 export interface RegisterRequest {
   email: string;
   password: string;
@@ -43,6 +57,7 @@ export interface SyncRequest {
     order: number;
     priority?: 'none' | 'low' | 'medium' | 'high';
     due_date?: number | null;
+    tags?: string[];
     created_at: number;
     updated_at: number;
   }>;
@@ -56,6 +71,7 @@ export interface SyncResponse {
     order: number;
     priority: 'none' | 'low' | 'medium' | 'high';
     due_date?: number | null;
+    tags?: string[];
     created_at: number;
     updated_at: number;
   }>;

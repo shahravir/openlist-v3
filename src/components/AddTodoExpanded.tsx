@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { parseDateFromText } from '../utils/dateParser';
 import { parsePriorityFromText } from '../utils/priorityParser';
+import { parseTagsFromText, extractUniqueTagNames } from '../utils/tagParser';
 import { DatePicker } from './DatePicker';
 import { PrioritySelector, Priority, priorityConfig } from './PrioritySelector';
+import { TagChip } from './TagChip';
 
 interface AddTodoExpandedProps {
-  onAdd: (text: string, dueDate?: number | null, priority?: Priority) => void;
+  onAdd: (text: string, dueDate?: number | null, priority?: Priority, tags?: string[]) => void;
   onCancel: () => void;
 }
 
@@ -13,8 +15,10 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
   const [text, setText] = useState('');
   const [detectedDate, setDetectedDate] = useState<{ date: Date; dateText: string } | null>(null);
   const [detectedPriority, setDetectedPriority] = useState<{ priority: Priority; priorityText: string } | null>(null);
+  const [detectedTags, setDetectedTags] = useState<string[]>([]);
   const [showDatePreview, setShowDatePreview] = useState(false);
   const [showPriorityPreview, setShowPriorityPreview] = useState(false);
+  const [showTagsPreview, setShowTagsPreview] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPrioritySelector, setShowPrioritySelector] = useState(false);
   const [manualDueDate, setManualDueDate] = useState<number | null>(null);
@@ -68,6 +72,23 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
     }
   }, [detectedPriority, priority]);
 
+  // Detect tags in the text as user types
+  useEffect(() => {
+    if (text.trim()) {
+      const tagResult = parseTagsFromText(text);
+      if (tagResult.parsedTags.length > 0) {
+        setDetectedTags(extractUniqueTagNames(tagResult.parsedTags));
+        setShowTagsPreview(true);
+      } else {
+        setDetectedTags([]);
+        setShowTagsPreview(false);
+      }
+    } else {
+      setDetectedTags([]);
+      setShowTagsPreview(false);
+    }
+  }, [text]);
+
   // Focus trap - keep focus within expanded view
   useEffect(() => {
     const containerRef = inputRef.current?.closest('form');
@@ -102,6 +123,7 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
       let finalText = trimmedText;
       let finalDueDate: number | null = manualDueDate;
       let finalPriority: Priority = priority;
+      let finalTags: string[] = [];
 
       // If manual date is set, use it
       if (manualDueDate) {
@@ -121,12 +143,21 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
         finalPriority = detectedPriority.priority;
       }
 
-      onAdd(finalText, finalDueDate, finalPriority);
+      // Parse tags from text
+      if (detectedTags.length > 0) {
+        const tagResult = parseTagsFromText(finalText);
+        finalText = tagResult.cleanedText;
+        finalTags = detectedTags;
+      }
+
+      onAdd(finalText, finalDueDate, finalPriority, finalTags);
       setText('');
       setDetectedDate(null);
       setDetectedPriority(null);
+      setDetectedTags([]);
       setShowDatePreview(false);
       setShowPriorityPreview(false);
+      setShowTagsPreview(false);
       setManualDueDate(null);
       setPriority('none');
       setShowDatePicker(false);
@@ -144,6 +175,11 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
     setShowPriorityPreview(false);
   };
 
+  const handleRejectTags = () => {
+    setDetectedTags([]);
+    setShowTagsPreview(false);
+  };
+
   const handleManualDateChange = (date: number | null) => {
     setManualDueDate(date);
     // Clear detected date when manual date is set
@@ -158,8 +194,10 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
     setText('');
     setDetectedDate(null);
     setDetectedPriority(null);
+    setDetectedTags([]);
     setShowDatePreview(false);
     setShowPriorityPreview(false);
+    setShowTagsPreview(false);
     setManualDueDate(null);
     setPriority('none');
     setShowDatePicker(false);
@@ -203,11 +241,11 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 touch-manipulation"
             autoComplete="off"
             aria-label="Todo text"
-            aria-describedby={(showDatePreview || showPriorityPreview) ? 'preview-info' : undefined}
+            aria-describedby={(showDatePreview || showPriorityPreview || showTagsPreview) ? 'preview-info' : undefined}
           />
           
-          {/* Date and Priority previews */}
-          {(showDatePreview || showPriorityPreview) && (
+          {/* Date, Priority, and Tags previews */}
+          {(showDatePreview || showPriorityPreview || showTagsPreview) && (
             <div
               id="preview-info"
               className="absolute top-full left-0 right-0 mt-1 space-y-1 z-10"
@@ -249,6 +287,28 @@ export function AddTodoExpanded({ onAdd, onCancel }: AddTodoExpandedProps) {
                       onClick={handleRejectPriority}
                       className="text-purple-600 hover:text-purple-800 text-xs underline"
                       aria-label="Remove detected priority"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Tags preview */}
+              {showTagsPreview && detectedTags.length > 0 && (
+                <div className="p-2 bg-green-50 border border-green-200 rounded-lg text-sm shadow-md">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-green-700 font-medium">Tags:</span>
+                      {detectedTags.map((tag) => (
+                        <TagChip key={tag} tag={tag} size="small" />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRejectTags}
+                      className="text-green-600 hover:text-green-800 text-xs underline whitespace-nowrap"
+                      aria-label="Remove detected tags"
                     >
                       Remove
                     </button>
