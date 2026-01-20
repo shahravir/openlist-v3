@@ -77,3 +77,29 @@ export interface SyncResponse {
   }>;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  password: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
+export interface PasswordResetToken {
+  id: string;
+  user_id: string;
+  token: string;
+  expires_at: Date;
+  used: boolean;
+  created_at: Date;
+}
+

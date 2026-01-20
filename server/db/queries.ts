@@ -1,6 +1,7 @@
 import pool from './connection.js';
-import { Todo, User, Tag } from '../types.js';
+import { Todo, User, Tag, PasswordResetToken } from '../types.js';
 import { generateTagColor } from '../utils/tagColor.js';
+import crypto from 'crypto';
 
 export const userQueries = {
   async findByEmail(email: string): Promise<User | null> {
@@ -19,6 +20,82 @@ export const userQueries = {
       [email, passwordHash]
     );
     return result.rows[0];
+  },
+
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [passwordHash, userId]
+    );
+  },
+};
+
+export const passwordResetQueries = {
+  async createToken(userId: string, expirationHours: number = 1): Promise<string> {
+    // Generate a secure random token
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Calculate expiration time
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + expirationHours);
+
+    await pool.query(
+      'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [userId, token, expiresAt]
+    );
+
+    return token;
+  },
+
+  async findByToken(token: string): Promise<PasswordResetToken | null> {
+    const result = await pool.query(
+      'SELECT * FROM password_reset_tokens WHERE token = $1',
+      [token]
+    );
+    return result.rows[0] || null;
+  },
+
+  async markAsUsed(token: string): Promise<void> {
+    await pool.query(
+      'UPDATE password_reset_tokens SET used = TRUE WHERE token = $1',
+      [token]
+    );
+  },
+
+  async deleteExpiredTokens(): Promise<void> {
+    await pool.query(
+      'DELETE FROM password_reset_tokens WHERE expires_at < CURRENT_TIMESTAMP'
+    );
+  },
+
+  async countRecentAttempts(email: string, timeWindowMinutes: number = 60): Promise<number> {
+    const timeWindowStart = new Date();
+    timeWindowStart.setMinutes(timeWindowStart.getMinutes() - timeWindowMinutes);
+
+    const result = await pool.query(
+      'SELECT COUNT(*) as count FROM password_reset_attempts WHERE email = $1 AND attempted_at >= $2',
+      [email, timeWindowStart]
+    );
+
+    return parseInt(result.rows[0]?.count || '0', 10);
+  },
+
+  async recordAttempt(email: string, ipAddress?: string): Promise<void> {
+    await pool.query(
+      'INSERT INTO password_reset_attempts (email, ip_address) VALUES ($1, $2)',
+      [email, ipAddress || null]
+    );
+  },
+
+  async cleanupOldAttempts(): Promise<void> {
+    // Delete attempts older than 24 hours
+    const cutoffTime = new Date();
+    cutoffTime.setHours(cutoffTime.getHours() - 24);
+
+    await pool.query(
+      'DELETE FROM password_reset_attempts WHERE attempted_at < $1',
+      [cutoffTime]
+    );
   },
 };
 
