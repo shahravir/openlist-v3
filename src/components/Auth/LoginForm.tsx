@@ -4,9 +4,10 @@ import { authService } from '../../services/auth';
 interface LoginFormProps {
   onSuccess: () => void;
   onSwitchToRegister: () => void;
+  onForgotPassword: () => void;
 }
 
-export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
+export function LoginForm({ onSuccess, onSwitchToRegister, onForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -67,6 +68,16 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               placeholder="••••••••"
             />
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              className="text-sm text-primary-600 hover:text-primary-700"
+            >
+              Forgot password?
+            </button>
           </div>
 
           <button

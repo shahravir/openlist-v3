@@ -11,11 +11,13 @@ import { useUndoManager, UndoAction } from './hooks/useUndoManager';
 import { authService } from './services/auth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
+import { ForgotPassword } from './components/Auth/ForgotPassword';
+import { ResetPassword } from './components/Auth/ResetPassword';
 import { SyncStatus } from './components/SyncStatus';
 import { filterTodosBySearch, debounce } from './utils/searchUtils';
 import { SEARCH_DEBOUNCE_DELAY_MS } from './utils/constants';
 
-type AuthView = 'login' | 'register';
+type AuthView = 'login' | 'register' | 'forgot-password' | 'reset-password';
 
 interface ToastState {
   message: string;
@@ -26,6 +28,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
   const [authView, setAuthView] = useState<AuthView>('login');
   const [isLoading, setIsLoading] = useState(true);
+  const [resetToken, setResetToken] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -49,6 +52,19 @@ function App() {
 
   // Initial sync on mount if authenticated
   useEffect(() => {
+    // Check for reset token in URL query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    if (token) {
+      setResetToken(token);
+      setAuthView('reset-password');
+      setIsLoading(false);
+      // Clear the token from URL for security
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
     if (isAuthenticated) {
       const loadInitialData = async () => {
         try {
@@ -71,6 +87,11 @@ function App() {
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
+  };
+
+  const handleResetPasswordSuccess = () => {
+    setAuthView('login');
+    setResetToken('');
   };
 
   const handleLogout = () => {
@@ -357,15 +378,32 @@ function App() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 py-12">
-        {authView === 'login' ? (
+        {authView === 'login' && (
           <LoginForm
             onSuccess={handleLoginSuccess}
             onSwitchToRegister={() => setAuthView('register')}
+            onForgotPassword={() => setAuthView('forgot-password')}
           />
-        ) : (
+        )}
+        {authView === 'register' && (
           <RegisterForm
             onSuccess={handleLoginSuccess}
             onSwitchToLogin={() => setAuthView('login')}
+          />
+        )}
+        {authView === 'forgot-password' && (
+          <ForgotPassword
+            onBackToLogin={() => setAuthView('login')}
+          />
+        )}
+        {authView === 'reset-password' && (
+          <ResetPassword
+            token={resetToken}
+            onSuccess={handleResetPasswordSuccess}
+            onBackToLogin={() => {
+              setAuthView('login');
+              setResetToken('');
+            }}
           />
         )}
       </div>
