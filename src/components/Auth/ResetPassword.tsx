@@ -165,7 +165,7 @@ export function ResetPassword({ token, onSuccess, onBackToLogin }: ResetPassword
 
           <button
             type="submit"
-            disabled={isLoading || !token || !!validationError || password !== confirmPassword}
+            disabled={isLoading || !token || !!validationError || (password.length > 0 && confirmPassword.length > 0 && password !== confirmPassword)}
             className="w-full py-3 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 active:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             aria-busy={isLoading}
           >

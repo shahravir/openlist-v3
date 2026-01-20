@@ -30,7 +30,11 @@ class EmailService {
 
     // If no email configuration is provided, use console logging for development
     if (!host || !port) {
-      console.warn('[EmailService] Email configuration not found. Emails will be logged to console.');
+      console.warn('[EmailService] Email configuration not found. Missing:', {
+        host: !host ? 'EMAIL_HOST' : 'configured',
+        port: !port ? 'EMAIL_PORT' : 'configured',
+      });
+      console.warn('[EmailService] Emails will be logged to console.');
       this.isConfigured = false;
       return;
     }

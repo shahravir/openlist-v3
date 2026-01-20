@@ -122,7 +122,11 @@ export async function authRoutes(fastify: FastifyInstance) {
         try {
           await emailService.sendPasswordResetEmail(email, resetToken);
         } catch (emailError) {
-          console.error('[Auth] Failed to send password reset email:', emailError);
+          console.error('[Auth] Failed to send password reset email:', {
+            email,
+            error: emailError instanceof Error ? emailError.message : String(emailError),
+            timestamp: new Date().toISOString(),
+          });
           // Don't reveal email sending failure to user for security
         }
       }

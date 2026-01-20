@@ -7,7 +7,7 @@ A minimalist, production-ready todo list application optimized for mobile, iPad,
 - ✨ Sleek, intuitive user interface
 - 📱 Mobile-first responsive design
 - 💾 Local storage persistence with PostgreSQL sync
-- 🔐 JWT-based authentication
+- 🔐 JWT-based authentication with password reset
 - 🔄 Offline-first sync with conflict resolution
 - 🎯 Drag & drop todo reordering with keyboard accessibility
 - 📅 **Due dates with natural language parsing** (new!)
@@ -55,6 +55,70 @@ npm run dev
 ```
 
 The app will be available at `http://localhost:5173`
+
+## Authentication & Password Reset
+
+OpenList V3 includes a full authentication system with secure password reset functionality:
+
+### Features
+- **JWT-based Authentication**: Secure token-based authentication
+- **Password Reset**: Users can reset forgotten passwords via email
+- **Rate Limiting**: Protects against abuse (3 attempts per hour per email)
+- **Token Expiration**: Reset tokens expire after 1 hour for security
+- **Email Notifications**: Beautiful, responsive HTML emails
+- **Development Mode**: Emails logged to console when email service not configured
+
+### Email Configuration (Backend)
+
+To enable password reset emails, configure the following environment variables in your `server/.env` file:
+
+```bash
+# Email Service Configuration
+EMAIL_HOST=smtp.gmail.com           # SMTP server hostname
+EMAIL_PORT=587                      # SMTP port (587 for TLS, 465 for SSL)
+EMAIL_SECURE=false                  # Use SSL (true for port 465, false for 587)
+EMAIL_USER=your-email@gmail.com     # SMTP username
+EMAIL_PASS=your-app-password        # SMTP password or app-specific password
+EMAIL_FROM=noreply@openlist.app     # From address for emails
+
+# Application URL (for reset links)
+APP_URL=http://localhost:5173       # Frontend URL for password reset links
+```
+
+**Note**: If email configuration is not provided, emails will be logged to the console in development mode. This is useful for testing without setting up an email service.
+
+### Supported Email Providers
+
+- **Gmail**: Use app-specific password, not your regular password
+- **SendGrid**: Use API key as password
+- **AWS SES**: Configure SMTP credentials
+- **Mailgun**: Use SMTP credentials
+- **Any SMTP Server**: Standard SMTP configuration
+
+### Gmail Setup Example
+
+1. Enable 2-Factor Authentication on your Google Account
+2. Generate an App Password:
+   - Go to Google Account → Security → 2-Step Verification → App passwords
+   - Generate a new app password for "Mail"
+3. Use the generated password in `EMAIL_PASS`
+
+### Password Reset Flow
+
+1. User clicks "Forgot password?" on login page
+2. User enters their email address
+3. System sends email with reset link (if account exists)
+4. User clicks link in email (valid for 1 hour)
+5. User enters new password
+6. User can log in with new password
+
+### Security Features
+
+- **Rate Limiting**: Maximum 3 password reset requests per hour per email
+- **Token Security**: Cryptographically secure random tokens
+- **One-time Use**: Tokens are marked as used after password reset
+- **Expiration**: Tokens expire after 1 hour
+- **No Email Enumeration**: Same response whether email exists or not
 
 ### Backend Setup
 
