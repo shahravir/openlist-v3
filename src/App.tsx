@@ -6,6 +6,8 @@ import { SearchModal } from './components/SearchModal';
 import { BurgerMenuButton } from './components/BurgerMenuButton';
 import { Backdrop } from './components/Backdrop';
 import { Toast } from './components/Toast';
+import { EmailVerificationBanner } from './components/EmailVerificationBanner';
+import { VerifyEmail } from './components/VerifyEmail';
 import { useSync } from './hooks/useSync';
 import { useUndoManager, UndoAction } from './hooks/useUndoManager';
 import { authService } from './services/auth';
@@ -23,6 +25,12 @@ interface ToastState {
 }
 
 function App() {
+  // Check if we're on the verify-email page
+  const isVerifyEmailPage = window.location.pathname === '/verify-email';
+  
+  if (isVerifyEmailPage) {
+    return <VerifyEmail />;
+  }
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
   const [authView, setAuthView] = useState<AuthView>('login');
   const [isLoading, setIsLoading] = useState(true);
@@ -445,6 +453,13 @@ function App() {
             
             {user && (
               <p className="text-sm text-gray-500 mt-2 lg:ml-0 ml-14 sm:ml-[60px]">{user.email}</p>
+            )}
+            
+            {/* Email Verification Banner */}
+            {user && !user.emailVerified && (
+              <div className="lg:ml-0 ml-14 sm:ml-[60px] mt-4">
+                <EmailVerificationBanner email={user.email} />
+              </div>
             )}
             
             {totalCount > 0 && (

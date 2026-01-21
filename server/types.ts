@@ -2,6 +2,9 @@ export interface User {
   id: string;
   email: string;
   password_hash: string;
+  email_verified: boolean;
+  verification_token: string | null;
+  verification_token_expires: Date | null;
   created_at: Date;
 }
 
@@ -46,6 +49,7 @@ export interface AuthResponse {
   user: {
     id: string;
     email: string;
+    emailVerified: boolean;
   };
 }
 

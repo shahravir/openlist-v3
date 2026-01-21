@@ -2,8 +2,13 @@ import { FastifyInstance } from 'fastify';
 import bcrypt from 'bcrypt';
 import { userQueries } from '../db/queries.js';
 import { RegisterRequest, LoginRequest, AuthResponse } from '../types.js';
+import { generateVerificationToken, getTokenExpiration, isTokenExpired } from '../utils/tokenGenerator.js';
+import { emailService } from '../utils/emailService.js';
 
 export async function authRoutes(fastify: FastifyInstance) {
+  // Get frontend URL from environment or use default
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
   // Register
   fastify.post<{ Body: RegisterRequest }>('/register', async (request, reply) => {
     const { email, password } = request.body;
@@ -28,6 +33,19 @@ export async function authRoutes(fastify: FastifyInstance) {
     // Create user
     const user = await userQueries.create(email, passwordHash);
 
+    // Generate verification token
+    const verificationToken = generateVerificationToken();
+    const tokenExpiration = getTokenExpiration();
+    await userQueries.setVerificationToken(user.id, verificationToken, tokenExpiration);
+
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(email, verificationToken, frontendUrl);
+    } catch (error) {
+      console.error('Failed to send verification email:', error);
+      // Don't fail registration if email fails - user can resend
+    }
+
     // Generate JWT
     const token = fastify.jwt.sign({ userId: user.id, email: user.email });
 
@@ -36,6 +54,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       user: {
         id: user.id,
         email: user.email,
+        emailVerified: user.email_verified || false,
       },
     };
 
@@ -70,10 +89,73 @@ export async function authRoutes(fastify: FastifyInstance) {
       user: {
         id: user.id,
         email: user.email,
+        emailVerified: user.email_verified || false,
       },
     };
 
     return reply.send(response);
+  });
+
+  // Verify Email
+  fastify.post<{ Body: { token: string } }>('/verify-email', async (request, reply) => {
+    const { token } = request.body;
+
+    if (!token) {
+      return reply.code(400).send({ error: 'Verification token is required' });
+    }
+
+    // Find user by token
+    const user = await userQueries.findByVerificationToken(token);
+    if (!user) {
+      return reply.code(400).send({ error: 'Invalid verification token' });
+    }
+
+    // Check if token has expired
+    if (isTokenExpired(user.verification_token_expires)) {
+      return reply.code(400).send({ error: 'Verification token has expired' });
+    }
+
+    // Verify email
+    await userQueries.verifyEmail(user.id);
+
+    return reply.send({ message: 'Email verified successfully' });
+  });
+
+  // Resend Verification Email
+  fastify.post('/resend-verification', async (request, reply) => {
+    // Get user from JWT token
+    try {
+      await request.jwtVerify();
+    } catch (error) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    const { userId } = request.user as { userId: string; email: string };
+
+    // Find user
+    const user = await userQueries.findById(userId);
+    if (!user) {
+      return reply.code(404).send({ error: 'User not found' });
+    }
+
+    // Check if already verified
+    if (user.email_verified) {
+      return reply.code(400).send({ error: 'Email is already verified' });
+    }
+
+    // Generate new verification token
+    const verificationToken = generateVerificationToken();
+    const tokenExpiration = getTokenExpiration();
+    await userQueries.setVerificationToken(user.id, verificationToken, tokenExpiration);
+
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(user.email, verificationToken, frontendUrl);
+      return reply.send({ message: 'Verification email sent' });
+    } catch (error) {
+      console.error('Failed to send verification email:', error);
+      return reply.code(500).send({ error: 'Failed to send verification email' });
+    }
   });
 }
 

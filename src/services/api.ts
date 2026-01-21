@@ -107,6 +107,18 @@ class ApiClient {
     return response.data;
   }
 
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    const response = await this.client.post<{ message: string }>('/auth/verify-email', {
+      token,
+    });
+    return response.data;
+  }
+
+  async resendVerification(): Promise<{ message: string }> {
+    const response = await this.client.post<{ message: string }>('/auth/resend-verification');
+    return response.data;
+  }
+
   // Todo endpoints
   async getTodos(): Promise<Todo[]> {
     const response = await this.client.get<{ todos: Todo[] }>('/todos');

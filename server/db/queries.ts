@@ -20,6 +20,28 @@ export const userQueries = {
     );
     return result.rows[0];
   },
+
+  async setVerificationToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+    await pool.query(
+      'UPDATE users SET verification_token = $1, verification_token_expires = $2 WHERE id = $3',
+      [token, expiresAt, userId]
+    );
+  },
+
+  async findByVerificationToken(token: string): Promise<User | null> {
+    const result = await pool.query(
+      'SELECT * FROM users WHERE verification_token = $1',
+      [token]
+    );
+    return result.rows[0] || null;
+  },
+
+  async verifyEmail(userId: string): Promise<void> {
+    await pool.query(
+      'UPDATE users SET email_verified = TRUE, verification_token = NULL, verification_token_expires = NULL WHERE id = $1',
+      [userId]
+    );
+  },
 };
 
 export const todoQueries = {
