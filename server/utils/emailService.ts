@@ -2,7 +2,19 @@
  * Email Service
  * 
  * In development mode, this logs emails to console.
- * In production, this would integrate with a real email service (SendGrid, AWS SES, etc.)
+ * In production, you should integrate with a real email service.
+ * 
+ * Supported email services (examples):
+ * - SendGrid: https://sendgrid.com/
+ * - AWS SES: https://aws.amazon.com/ses/
+ * - Mailgun: https://www.mailgun.com/
+ * - Postmark: https://postmarkapp.com/
+ * 
+ * To configure for production:
+ * 1. Choose an email service provider
+ * 2. Install the provider's SDK (e.g., npm install @sendgrid/mail)
+ * 3. Set environment variables for API keys
+ * 4. Update the sendEmail method to use the provider's API
  */
 
 interface EmailOptions {
@@ -33,9 +45,19 @@ export class EmailService {
       console.log('============================\n');
     } else {
       // In production, integrate with real email service
-      // Example: SendGrid, AWS SES, Mailgun, etc.
-      console.log('TODO: Implement production email service');
-      // throw new Error('Production email service not configured');
+      // Example with SendGrid:
+      // const sgMail = require('@sendgrid/mail');
+      // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      // await sgMail.send({
+      //   to: options.to,
+      //   from: process.env.FROM_EMAIL,
+      //   subject: options.subject,
+      //   text: options.text,
+      //   html: options.html,
+      // });
+      
+      console.log('Production email service not configured. Please integrate with SendGrid, AWS SES, or another provider.');
+      // For now, don't throw error to allow testing in production-like environments
     }
   }
 

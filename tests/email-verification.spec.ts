@@ -22,12 +22,9 @@ test.describe('Email Verification', () => {
     await page.fill('input[placeholder*="Confirm"][type="password"]', testUser.password);
     await page.click('button:has-text("Create Account")');
 
-    // Wait for successful registration
-    await page.waitForTimeout(1000);
-
-    // Should see verification banner
+    // Wait for successful registration by checking for the banner
     const banner = page.locator('[role="alert"]:has-text("verify your email")');
-    await expect(banner).toBeVisible();
+    await expect(banner).toBeVisible({ timeout: 5000 });
 
     // Banner should show user email
     await expect(banner).toContainText(testUser.email);
@@ -49,15 +46,16 @@ test.describe('Email Verification', () => {
     await page.fill('input[placeholder*="Confirm"][type="password"]', testUser.password);
     await page.click('button:has-text("Create Account")');
 
-    await page.waitForTimeout(1000);
+    // Wait for banner to appear
+    const banner = page.locator('[role="alert"]');
+    await expect(banner).toBeVisible({ timeout: 5000 });
 
     // Click resend button
-    const banner = page.locator('[role="alert"]');
     const resendButton = banner.locator('button:has-text("Resend Email")');
     await resendButton.click();
 
     // Should show success message
-    await expect(banner).toContainText('Verification email sent');
+    await expect(banner.locator('text=Verification email sent')).toBeVisible({ timeout: 5000 });
   });
 
   test('verification banner is responsive on mobile', async ({ page }) => {
@@ -75,11 +73,9 @@ test.describe('Email Verification', () => {
     await page.fill('input[placeholder*="Confirm"][type="password"]', testUser.password);
     await page.click('button:has-text("Create Account")');
 
-    await page.waitForTimeout(1000);
-
-    // Should see verification banner on mobile
+    // Wait for banner to appear
     const banner = page.locator('[role="alert"]');
-    await expect(banner).toBeVisible();
+    await expect(banner).toBeVisible({ timeout: 5000 });
 
     // Button should be full-width on mobile (check for w-full or similar)
     const resendButton = banner.locator('button:has-text("Resend Email")');
@@ -102,11 +98,9 @@ test.describe('Email Verification', () => {
     await page.fill('input[placeholder*="Confirm"][type="password"]', testUser.password);
     await page.click('button:has-text("Create Account")');
 
-    await page.waitForTimeout(1000);
-
-    // Check for proper ARIA attributes
+    // Wait for banner to appear
     const banner = page.locator('[role="alert"]');
-    await expect(banner).toBeVisible();
+    await expect(banner).toBeVisible({ timeout: 5000 });
     
     // Should have aria-live for screen readers
     const ariaLive = await banner.getAttribute('aria-live');
@@ -138,7 +132,9 @@ test.describe('Email Verification', () => {
     await page.fill('input[placeholder*="Confirm"][type="password"]', testUser.password);
     await page.click('button:has-text("Create Account")');
 
-    await page.waitForTimeout(1000);
+    // Wait for banner to appear first
+    const banner = page.locator('[role="alert"]:has-text("verify your email")');
+    await expect(banner).toBeVisible({ timeout: 5000 });
 
     // Manually mark as verified in localStorage (simulating verification)
     await page.evaluate(() => {
@@ -149,9 +145,9 @@ test.describe('Email Verification', () => {
 
     // Reload page
     await page.reload();
+    await page.waitForLoadState('networkidle');
 
     // Verification banner should not be visible
-    const banner = page.locator('[role="alert"]:has-text("verify your email")');
     await expect(banner).not.toBeVisible();
   });
 
@@ -166,11 +162,8 @@ test.describe('Email Verification', () => {
   test('verify email page handles error state', async ({ page }) => {
     await page.goto('/verify-email?token=invalid-token');
 
-    // Wait for error state
-    await page.waitForTimeout(2000);
-
-    // Should show error message
-    await expect(page.locator('text=Verification Failed')).toBeVisible();
+    // Wait for error state - looking for the error message directly
+    await expect(page.locator('text=Verification Failed')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('text=Invalid verification token')).toBeVisible();
 
     // Should have a "Go to Home" button
