@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
+import rateLimit from '@fastify/rate-limit';
 import dotenv from 'dotenv';
 import { authRoutes } from './routes/auth.js';
 import { todoRoutes } from './routes/todos.js';
@@ -93,6 +94,13 @@ const start = async () => {
     // Register JWT
     await fastify.register(jwt, {
       secret: process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
+    });
+
+    // Register rate limiting
+    await fastify.register(rateLimit, {
+      global: false, // We'll enable it per-route
+      max: 100, // Default max requests
+      timeWindow: '1 minute'
     });
 
     // Register WebSocket

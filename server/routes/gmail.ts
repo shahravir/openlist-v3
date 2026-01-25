@@ -59,7 +59,16 @@ export async function gmailRoutes(fastify: FastifyInstance) {
   
   // GET /api/gmail/oauth/authorize
   // Generate OAuth authorization URL and redirect user to Google consent screen
-  fastify.get('/oauth/authorize', { preHandler: authenticate }, async (request, reply) => {
+  // Rate limited to prevent abuse (5 requests per minute per user)
+  fastify.get('/oauth/authorize', { 
+    preHandler: authenticate,
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: '1 minute'
+      }
+    }
+  }, async (request, reply) => {
     try {
       const userId = request.user.userId;
       
@@ -83,7 +92,15 @@ export async function gmailRoutes(fastify: FastifyInstance) {
 
   // GET /api/gmail/oauth/callback
   // Handle OAuth callback from Google
-  fastify.get('/oauth/callback', async (request, reply) => {
+  // Rate limited to prevent abuse (10 requests per minute to handle legitimate retries)
+  fastify.get('/oauth/callback', { 
+    config: {
+      rateLimit: {
+        max: 10,
+        timeWindow: '1 minute'
+      }
+    }
+  }, async (request, reply) => {
     try {
       const { code, error, state } = request.query as { code?: string; error?: string; state?: string };
 
