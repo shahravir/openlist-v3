@@ -6,17 +6,46 @@ import { GmailStatusResponse } from '../types.js';
 import crypto from 'crypto';
 
 // Store state tokens temporarily (in production, use Redis or database)
+// NOTE: This in-memory storage is suitable for development and single-instance deployments.
+// For production with multiple server instances, implement persistent storage (Redis, database)
+// to ensure state tokens are shared across instances and survive server restarts.
 const stateStore = new Map<string, { userId: string; timestamp: number }>();
 
+// Cleanup interval ID for proper resource management
+let cleanupIntervalId: NodeJS.Timeout | null = null;
+
 // Clean up expired state tokens (older than 10 minutes)
-setInterval(() => {
-  const now = Date.now();
-  for (const [state, data] of stateStore.entries()) {
-    if (now - data.timestamp > 600000) { // 10 minutes
-      stateStore.delete(state);
+function startStateCleanup() {
+  if (cleanupIntervalId) return; // Already started
+  
+  cleanupIntervalId = setInterval(() => {
+    const now = Date.now();
+    for (const [state, data] of stateStore.entries()) {
+      if (now - data.timestamp > 600000) { // 10 minutes
+        stateStore.delete(state);
+      }
     }
+  }, 60000); // Run every minute
+}
+
+// Stop cleanup interval (for graceful shutdown)
+export function stopStateCleanup() {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
   }
-}, 60000); // Run every minute
+}
+
+// Validate required environment variables
+if (!process.env.GMAIL_CLIENT_ID) {
+  throw new Error('GMAIL_CLIENT_ID environment variable is required for Gmail OAuth');
+}
+if (!process.env.GMAIL_CLIENT_SECRET) {
+  throw new Error('GMAIL_CLIENT_SECRET environment variable is required for Gmail OAuth');
+}
+if (!process.env.GMAIL_REDIRECT_URI) {
+  throw new Error('GMAIL_REDIRECT_URI environment variable is required for Gmail OAuth');
+}
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GMAIL_CLIENT_ID,
@@ -25,6 +54,9 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 export async function gmailRoutes(fastify: FastifyInstance) {
+  // Start state cleanup interval
+  startStateCleanup();
+  
   // GET /api/gmail/oauth/authorize
   // Generate OAuth authorization URL and redirect user to Google consent screen
   fastify.get('/oauth/authorize', { preHandler: authenticate }, async (request, reply) => {
@@ -123,7 +155,7 @@ export async function gmailRoutes(fastify: FastifyInstance) {
       // Redirect to frontend success page
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       return reply.redirect(`${frontendUrl}/settings?gmail_success=true`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       fastify.log.error(error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       return reply.redirect(`${frontendUrl}/settings?gmail_error=exchange_failed`);
