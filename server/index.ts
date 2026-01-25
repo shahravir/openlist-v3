@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { authRoutes } from './routes/auth.js';
 import { todoRoutes } from './routes/todos.js';
 import { tagRoutes } from './routes/tags.js';
+import { gmailRoutes } from './routes/gmail.js';
 import { setupWebSocket } from './websocket.js';
 
 dotenv.config();
@@ -104,6 +105,7 @@ const start = async () => {
     await fastify.register(authRoutes, { prefix: '/api/auth' });
     await fastify.register(todoRoutes, { prefix: '/api' });
     await fastify.register(tagRoutes, { prefix: '/api' });
+    await fastify.register(gmailRoutes, { prefix: '/api/gmail' });
 
     // Health check
     fastify.get('/health', async () => {
