@@ -91,6 +91,8 @@ npm start
 - `GET /api/gmail/status` - Check Gmail integration status (requires authentication)
 - `DELETE /api/gmail/disconnect` - Disconnect Gmail integration (requires authentication)
 
+**📚 [Gmail OAuth Setup & Testing Guide →](GMAIL_OAUTH_SETUP.md)**
+
 ### Health
 - `GET /health` - Health check endpoint
 
@@ -108,7 +110,9 @@ npm start
 - `GMAIL_CLIENT_SECRET` - Google OAuth Client Secret
 - `GMAIL_REDIRECT_URI` - OAuth callback URL (e.g., http://localhost:3001/api/gmail/oauth/callback)
 
-To set up Gmail OAuth:
+**📚 For detailed setup instructions, see [GMAIL_OAUTH_SETUP.md](GMAIL_OAUTH_SETUP.md)**
+
+**Quick Setup:**
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select an existing one
 3. Enable Gmail API
