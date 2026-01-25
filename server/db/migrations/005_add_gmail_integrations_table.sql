@@ -3,6 +3,7 @@
 -- Supports one Gmail integration per user with secure token storage
 
 -- Create gmail_integrations table
+-- Note: Tokens are stored as TEXT and should be encrypted at the application layer
 CREATE TABLE IF NOT EXISTS gmail_integrations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -17,7 +18,7 @@ CREATE TABLE IF NOT EXISTS gmail_integrations (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_gmail_integrations_user_id ON gmail_integrations(user_id);
+-- Note: user_id index is not needed as the UNIQUE constraint automatically creates one
 CREATE INDEX IF NOT EXISTS idx_gmail_integrations_is_active ON gmail_integrations(is_active);
 
 -- Create trigger to automatically update updated_at timestamp
