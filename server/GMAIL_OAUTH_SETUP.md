@@ -31,9 +31,18 @@ This guide explains how to set up Gmail OAuth integration and test the implement
 
 ### Step 3: Configure OAuth Consent Screen
 
-1. Go to **"APIs & Services"** > **"OAuth consent screen"**
-2. Choose **"External"** user type (unless you have a Google Workspace)
-3. Click **"Create"**
+**Important:** Google has reorganized the OAuth setup interface. The user type selection is now in a separate **Audience** page, not in the OAuth consent screen itself.
+
+1. **Set User Type (Audience):**
+   - Navigate to **"Google Auth Platform"** > **"Audience"** (or go directly to: `https://console.developers.google.com/auth/audience`)
+   - Under **"User Type"**, select **"External"** (unless you have a Google Workspace organization)
+   - **External** means your app is available to any user with a Google Account
+   - **Internal** is only available if your project is associated with a Google Cloud Organization
+   - Click **"Save"**
+
+2. **Configure OAuth Consent Screen:**
+   - Go to **"APIs & Services"** > **"OAuth consent screen"** (or **"Google Auth Platform"** > **"Branding"**)
+   - If this is your first time, click **"Create"** or **"Continue"**
 
 **App Information:**
 - **App name**: OpenList (or your app name)
@@ -415,6 +424,16 @@ The 11th request should return a rate limit error (429 status).
 - Wait 1 minute before retrying
 - For development, you can temporarily increase limits in `server/routes/gmail.ts`
 - Remember to restore production limits before deploying
+
+### Issue: Can't find "External" user type in OAuth consent screen
+
+**Solution:**
+- Google has moved the user type selection to a separate page. The **"External"** option is no longer in the OAuth consent screen setup.
+- **Correct location:** Navigate to **"Google Auth Platform"** > **"Audience"** (or go to: `https://console.developers.google.com/auth/audience`)
+- On the Audience page, you'll see **"User Type"** with two options:
+  - **External**: Available to any user with a Google Account (choose this for most apps)
+  - **Internal**: Only available if your project is in a Google Cloud Organization
+- Select **"External"** and click **"Save"**, then return to the OAuth consent screen to continue configuration
 
 ---
 
