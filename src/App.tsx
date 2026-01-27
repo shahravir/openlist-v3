@@ -19,7 +19,7 @@ type AuthView = 'login' | 'register';
 
 interface ToastState {
   message: string;
-  action: UndoAction;
+  action?: UndoAction;
 }
 
 function App() {
@@ -46,6 +46,47 @@ function App() {
   useEffect(() => {
     debouncedSetSearch(searchQuery);
   }, [searchQuery, debouncedSetSearch]);
+
+  // Handle OAuth callback for Gmail
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const gmailSuccess = urlParams.get('gmail_success');
+    const gmailError = urlParams.get('gmail_error');
+    
+    if (gmailSuccess === 'true') {
+      // Notify opener window if opened in popup
+      if (window.opener) {
+        window.opener.postMessage({ type: 'gmail-oauth-success' }, window.location.origin);
+        window.close();
+      } else {
+        // Show success toast
+        setToastState({
+          message: 'Gmail connected successfully',
+        });
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } else if (gmailError) {
+      // Notify opener window if opened in popup
+      if (window.opener) {
+        window.opener.postMessage({ type: 'gmail-oauth-error' }, window.location.origin);
+        window.close();
+      } else {
+        // Show error toast with specific error message
+        let errorMessage = 'Failed to connect Gmail. Please try again.';
+        if (gmailError === 'access_denied') {
+          errorMessage = 'Gmail access was denied. Please try again and grant permissions.';
+        } else if (gmailError === 'invalid_state') {
+          errorMessage = 'Session expired. Please try connecting again.';
+        }
+        setToastState({
+          message: errorMessage,
+        });
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   // Initial sync on mount if authenticated
   useEffect(() => {
@@ -97,6 +138,11 @@ function App() {
     setIsSearchModalOpen(false);
     setSearchQuery(''); // Clear search filter when closing modal
   };
+
+  // Simple toast handler for Gmail integration and other non-undo messages
+  const showToast = useCallback((message: string) => {
+    setToastState({ message });
+  }, []);
 
   // Keyboard shortcut: Ctrl/Cmd + B to toggle sidebar (mobile/tablet only)
   useEffect(() => {
@@ -397,6 +443,7 @@ function App() {
         priorityFilter={priorityFilter}
         onPriorityFilterChange={setPriorityFilter}
         isPersistent={true}
+        onShowToast={showToast}
       />
 
       {/* Search Modal */}
@@ -480,7 +527,7 @@ function App() {
       {toastState && (
         <Toast
           message={toastState.message}
-          onAction={handleUndo}
+          onAction={toastState.action ? handleUndo : undefined}
           onDismiss={handleDismissToast}
         />
       )}

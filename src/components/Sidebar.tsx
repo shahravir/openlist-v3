@@ -1,4 +1,5 @@
 import { useEffect, useRef, useMemo } from 'react';
+import { GmailIntegration } from './GmailIntegration';
 
 export type DateFilter = 'all' | 'overdue' | 'today' | 'week' | 'upcoming' | 'no-date';
 export type FilterStatus = 'all' | 'active' | 'completed';
@@ -15,9 +16,10 @@ interface SidebarProps {
   priorityFilter?: PriorityFilter;
   onPriorityFilterChange?: (priority: PriorityFilter) => void;
   isPersistent?: boolean; // For desktop persistent sidebar
+  onShowToast?: (message: string) => void; // For Gmail integration notifications
 }
 
-export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onDateFilterChange, filterStatus = 'all', onFilterStatusChange, priorityFilter = 'all', onPriorityFilterChange, isPersistent = false }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onDateFilterChange, filterStatus = 'all', onFilterStatusChange, priorityFilter = 'all', onPriorityFilterChange, isPersistent = false, onShowToast }: SidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -409,6 +411,16 @@ export function Sidebar({ isOpen, onClose, onOpenSearch, dateFilter = 'all', onD
               </div>
             </div>
           )}
+
+          {/* Gmail Integration Section */}
+          <div className="space-y-1.5 pt-4 mt-4 border-t border-gray-200">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2">
+              Integrations
+            </h3>
+            <div className="px-2">
+              <GmailIntegration onShowToast={onShowToast} />
+            </div>
+          </div>
         </div>
       </div>
     </aside>

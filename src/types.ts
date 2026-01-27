@@ -29,3 +29,9 @@ export interface SyncStatus {
   error: string | null;
 }
 
+export interface GmailStatus {
+  connected: boolean;
+  email?: string;
+  lastSyncTime?: number | null;
+}
+

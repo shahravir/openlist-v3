@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { Todo, AuthResponse } from '../types';
+import { Todo, AuthResponse, GmailStatus } from '../types';
 import { getApiBaseUrl } from '../utils/config';
 
 const API_BASE_URL = getApiBaseUrl();
@@ -200,6 +200,24 @@ class ApiClient {
 
   async deleteTag(id: string): Promise<void> {
     await this.client.delete(`/tags/${id}`);
+  }
+
+  // Gmail integration endpoints
+  async getGmailStatus(): Promise<GmailStatus> {
+    const response = await this.client.get<GmailStatus>('/gmail/status');
+    return response.data;
+  }
+
+  async disconnectGmail(): Promise<void> {
+    await this.client.delete('/gmail/disconnect');
+  }
+
+  getGmailOAuthUrl(): string {
+    if (!this.token) {
+      throw new Error('Authentication required to connect Gmail');
+    }
+    // Include token in URL query parameter since window.open() doesn't send headers
+    return `${API_BASE_URL}/gmail/oauth/authorize?token=${encodeURIComponent(this.token)}`;
   }
 }
 
