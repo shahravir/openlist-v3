@@ -1,5 +1,5 @@
 import pool from './connection.js';
-import { Todo, User, Tag } from '../types.js';
+import { Todo, User, Tag, GmailIntegration } from '../types.js';
 import { generateTagColor } from '../utils/tagColor.js';
 
 export const userQueries = {
@@ -359,6 +359,40 @@ export const tagQueries = {
     } finally {
       client.release();
     }
+  },
+};
+
+export const gmailQueries = {
+  async create(userId: string, email: string, accessToken: string, refreshToken: string, expiresAt: Date): Promise<GmailIntegration> {
+    const result = await pool.query(
+      'INSERT INTO gmail_integrations (user_id, email, access_token, refresh_token, token_expires_at) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [userId, email, accessToken, refreshToken, expiresAt]
+    );
+    return result.rows[0];
+  },
+
+  async findByUserId(userId: string): Promise<GmailIntegration | null> {
+    const result = await pool.query(
+      'SELECT * FROM gmail_integrations WHERE user_id = $1 AND is_active = true',
+      [userId]
+    );
+    return result.rows[0] || null;
+  },
+
+  async updateTokens(userId: string, accessToken: string, refreshToken: string, expiresAt: Date): Promise<GmailIntegration | null> {
+    const result = await pool.query(
+      'UPDATE gmail_integrations SET access_token = $1, refresh_token = $2, token_expires_at = $3 WHERE user_id = $4 RETURNING *',
+      [accessToken, refreshToken, expiresAt, userId]
+    );
+    return result.rows[0] || null;
+  },
+
+  async delete(userId: string): Promise<boolean> {
+    const result = await pool.query(
+      'DELETE FROM gmail_integrations WHERE user_id = $1',
+      [userId]
+    );
+    return (result.rowCount ?? 0) > 0;
   },
 };
 

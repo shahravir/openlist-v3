@@ -27,6 +27,11 @@ JWT_SECRET=your-secret-key-change-this-in-production
 PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
+
+# Gmail OAuth (optional - for Gmail integration)
+GMAIL_CLIENT_ID=your-gmail-client-id
+GMAIL_CLIENT_SECRET=your-gmail-client-secret
+GMAIL_REDIRECT_URI=http://localhost:3001/api/gmail/oauth/callback
 ```
 
 4. Create the database:
@@ -74,6 +79,20 @@ npm start
 - `PUT /api/todos/:id` - Update a todo (requires authentication)
 - `DELETE /api/todos/:id` - Delete a todo (requires authentication)
 
+### Tags
+- `GET /api/tags` - Get all tags (requires authentication)
+- `POST /api/tags` - Create a new tag (requires authentication)
+- `PUT /api/tags/:id` - Update a tag (requires authentication)
+- `DELETE /api/tags/:id` - Delete a tag (requires authentication)
+
+### Gmail Integration
+- `GET /api/gmail/oauth/authorize` - Start Gmail OAuth flow (requires authentication)
+- `GET /api/gmail/oauth/callback` - OAuth callback endpoint
+- `GET /api/gmail/status` - Check Gmail integration status (requires authentication)
+- `DELETE /api/gmail/disconnect` - Disconnect Gmail integration (requires authentication)
+
+**📚 [Gmail OAuth Setup & Testing Guide →](GMAIL_OAUTH_SETUP.md)**
+
 ### Health
 - `GET /health` - Health check endpoint
 
@@ -85,6 +104,21 @@ npm start
 - `NODE_ENV` - Environment (development/production)
 - `FRONTEND_URL` - Frontend URL for CORS (default: http://localhost:5173)
 - `RENDER_SERVICE_URL` - (Optional) Render service URL for CORS in production
+
+### Gmail OAuth (Optional)
+- `GMAIL_CLIENT_ID` - Google OAuth Client ID from Google Cloud Console
+- `GMAIL_CLIENT_SECRET` - Google OAuth Client Secret
+- `GMAIL_REDIRECT_URI` - OAuth callback URL (e.g., http://localhost:3001/api/gmail/oauth/callback)
+
+**📚 For detailed setup instructions, see [GMAIL_OAUTH_SETUP.md](GMAIL_OAUTH_SETUP.md)**
+
+**Quick Setup:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable Gmail API
+4. Create OAuth 2.0 credentials (Web application)
+5. Add authorized redirect URIs (e.g., http://localhost:3001/api/gmail/oauth/callback)
+6. Copy the Client ID and Client Secret to your `.env` file
 
 ## Deployment to Render
 

@@ -77,3 +77,20 @@ export interface SyncResponse {
   }>;
 }
 
+export interface GmailIntegration {
+  id: string;
+  user_id: string;
+  access_token: string;
+  refresh_token: string;
+  token_expires_at: Date;
+  email: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface GmailStatusResponse {
+  connected: boolean;
+  email?: string;
+}
+

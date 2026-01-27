@@ -2,10 +2,12 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
+import rateLimit from '@fastify/rate-limit';
 import dotenv from 'dotenv';
 import { authRoutes } from './routes/auth.js';
 import { todoRoutes } from './routes/todos.js';
 import { tagRoutes } from './routes/tags.js';
+import { gmailRoutes } from './routes/gmail.js';
 import { setupWebSocket } from './websocket.js';
 
 dotenv.config();
@@ -94,6 +96,13 @@ const start = async () => {
       secret: process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
     });
 
+    // Register rate limiting
+    await fastify.register(rateLimit, {
+      global: false, // We'll enable it per-route
+      max: 100, // Default max requests
+      timeWindow: '1 minute'
+    });
+
     // Register WebSocket
     await fastify.register(websocket);
 
@@ -104,6 +113,7 @@ const start = async () => {
     await fastify.register(authRoutes, { prefix: '/api/auth' });
     await fastify.register(todoRoutes, { prefix: '/api' });
     await fastify.register(tagRoutes, { prefix: '/api' });
+    await fastify.register(gmailRoutes, { prefix: '/api/gmail' });
 
     // Health check
     fastify.get('/health', async () => {
