@@ -50,9 +50,10 @@ function App() {
   // Handle OAuth callback for Gmail
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const gmailOAuthSuccess = urlParams.get('gmail_oauth');
+    const gmailSuccess = urlParams.get('gmail_success');
+    const gmailError = urlParams.get('gmail_error');
     
-    if (gmailOAuthSuccess === 'success') {
+    if (gmailSuccess === 'true') {
       // Notify opener window if opened in popup
       if (window.opener) {
         window.opener.postMessage({ type: 'gmail-oauth-success' }, window.location.origin);
@@ -65,15 +66,21 @@ function App() {
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
       }
-    } else if (gmailOAuthSuccess === 'error') {
+    } else if (gmailError) {
       // Notify opener window if opened in popup
       if (window.opener) {
         window.opener.postMessage({ type: 'gmail-oauth-error' }, window.location.origin);
         window.close();
       } else {
-        // Show error toast
+        // Show error toast with specific error message
+        let errorMessage = 'Failed to connect Gmail. Please try again.';
+        if (gmailError === 'access_denied') {
+          errorMessage = 'Gmail access was denied. Please try again and grant permissions.';
+        } else if (gmailError === 'invalid_state') {
+          errorMessage = 'Session expired. Please try connecting again.';
+        }
         setToastState({
-          message: 'Failed to connect Gmail. Please try again.',
+          message: errorMessage,
         });
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
