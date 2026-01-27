@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { google } from 'googleapis';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authenticateWithQueryToken } from '../middleware/auth.js';
 import { gmailQueries } from '../db/queries.js';
 import { GmailStatusResponse } from '../types.js';
 import crypto from 'crypto';
@@ -60,8 +60,9 @@ export async function gmailRoutes(fastify: FastifyInstance) {
   // GET /api/gmail/oauth/authorize
   // Generate OAuth authorization URL and redirect user to Google consent screen
   // Rate limited to prevent abuse (5 requests per minute per user)
+  // Accepts token from either Authorization header or query parameter (for window.open() flows)
   fastify.get('/oauth/authorize', { 
-    preHandler: authenticate,
+    preHandler: authenticateWithQueryToken,
     config: {
       rateLimit: {
         max: 5,

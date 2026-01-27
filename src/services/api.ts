@@ -213,7 +213,11 @@ class ApiClient {
   }
 
   getGmailOAuthUrl(): string {
-    return `${API_BASE_URL}/gmail/oauth/authorize`;
+    if (!this.token) {
+      throw new Error('Authentication required to connect Gmail');
+    }
+    // Include token in URL query parameter since window.open() doesn't send headers
+    return `${API_BASE_URL}/gmail/oauth/authorize?token=${encodeURIComponent(this.token)}`;
   }
 }
 
