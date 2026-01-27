@@ -13,6 +13,15 @@ if (!process.env.GMAIL_REDIRECT_URI) {
   throw new Error('GMAIL_REDIRECT_URI environment variable is required for Gmail OAuth');
 }
 
+// Gmail API message part interface
+interface GmailMessagePart {
+  mimeType?: string | null;
+  body?: {
+    data?: string | null;
+  } | null;
+  parts?: GmailMessagePart[] | null;
+}
+
 // Email metadata interface
 export interface EmailMetadata {
   id: string;
@@ -265,41 +274,46 @@ export async function fetchRecentEmails(userId: string, maxResults: number = 50)
 
 /**
  * Parse email body from Gmail API response
+ * Prefers HTML content over plain text when both are available
  * @param parts - Email parts from Gmail API
  * @returns Parsed email body and content type
  */
-function parseEmailBody(parts: any[]): { body: string; isHtml: boolean } {
-  let body = '';
-  let isHtml = false;
+function parseEmailBody(parts: GmailMessagePart[]): { body: string; isHtml: boolean } {
+  let plainTextBody = '';
+  let htmlBody = '';
   
   for (const part of parts) {
     // Handle nested parts (multipart messages)
     if (part.parts) {
       const parsed = parseEmailBody(part.parts);
       if (parsed.body) {
-        body = parsed.body;
-        isHtml = parsed.isHtml;
-        // Prefer HTML over plain text
-        if (isHtml) {
-          return { body, isHtml };
+        if (parsed.isHtml) {
+          htmlBody = parsed.body;
+        } else if (!plainTextBody) {
+          plainTextBody = parsed.body;
         }
       }
     }
     
     // Handle text/plain
-    if (part.mimeType === 'text/plain' && part.body?.data && !body) {
-      body = Buffer.from(part.body.data, 'base64').toString('utf-8');
-      isHtml = false;
+    if (part.mimeType === 'text/plain' && part.body?.data && !plainTextBody) {
+      plainTextBody = Buffer.from(part.body.data, 'base64').toString('utf-8');
     }
     
     // Handle text/html (preferred over plain text)
     if (part.mimeType === 'text/html' && part.body?.data) {
-      body = Buffer.from(part.body.data, 'base64').toString('utf-8');
-      isHtml = true;
+      htmlBody = Buffer.from(part.body.data, 'base64').toString('utf-8');
     }
   }
   
-  return { body, isHtml };
+  // Prefer HTML over plain text, fallback to plain text if no HTML
+  if (htmlBody) {
+    return { body: htmlBody, isHtml: true };
+  } else if (plainTextBody) {
+    return { body: plainTextBody, isHtml: false };
+  }
+  
+  return { body: '', isHtml: false };
 }
 
 /**
