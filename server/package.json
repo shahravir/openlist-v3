@@ -20,6 +20,7 @@
     "dotenv": "^16.3.1",
     "fastify": "^4.25.2",
     "googleapis": "^170.1.0",
+    "openai": "^6.16.0",
     "pg": "^8.11.3",
     "typescript": "^5.2.2"
   },
